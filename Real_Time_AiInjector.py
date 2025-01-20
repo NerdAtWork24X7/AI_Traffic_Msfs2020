@@ -29,7 +29,7 @@ MAX_ARRIVAL = 40
 MAX_DEPARTURE = 40
 MAX_SPAWN_DIST = 200
 MAX_THRESOLD_ALTITUDE = 10000
-INJECTION_TIME = 2
+INJECTION_TIME = 1
 
 
 sm = SimConnect(library_path=".\Sim_Connect_Custom\SimConnect.dll")
