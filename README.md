@@ -10,6 +10,7 @@ Modify this Parameters to inject traffic at airport
 3) ACTIVE_RUNWAY = "27"
 4) MAX_ARRIVAL = 40
 5) MAX_DEPARTURE = 40
+6) INJECTION_TIME = 2 //Default 2 mins
 
 
 Script inject Traffic every 3 mins but this can modified . Ideal is 1 min. < 1 min can create Traffic congestion

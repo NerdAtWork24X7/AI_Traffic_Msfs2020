@@ -8,7 +8,7 @@ from timezonefinder import TimezoneFinder
 import pytz
 from tzlocal import get_localzone
 import re
-from datetime import datetime
+from datetime import datetime,timedelta
 import warnings
 from geopy.distance import geodesic
 import random
@@ -29,6 +29,8 @@ MAX_ARRIVAL = 40
 MAX_DEPARTURE = 40
 MAX_SPAWN_DIST = 200
 MAX_THRESOLD_ALTITUDE = 10000
+INJECTION_TIME = 2
+
 
 sm = SimConnect(library_path=".\Sim_Connect_Custom\SimConnect.dll")
 
@@ -46,7 +48,7 @@ class Common:
   Global_req_id = 0
   
 
-  def Get_Timezone(src,hr,min):
+  def Get_Timezone(src,specific_time_str):
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+src+"""%'"""
     with Common.engine_fldatabase.connect() as conn:
       src_df = pd.read_sql(sql=qry_str, con=conn.connection) 
@@ -57,15 +59,15 @@ class Common:
     timezone = tf.timezone_at(lng=lon, lat=lat)
     
     # Define the timezone object for the local timezone
-    local_tz = pytz.timezone(timezone)
-    local_time_in_timezone = datetime.now(local_tz)
+    from_zone = pytz.timezone(timezone)
+    to_zone = get_localzone()
     
-    local_time_in_timezone = local_time_in_timezone.replace(hour=int(hr), minute=int(min))
-    local_timezone = get_localzone()
-    # Convert the localized time to UTC
-    utc_time = local_time_in_timezone.astimezone(local_timezone)
-    
-    return utc_time
+    specific_time = datetime.strptime(specific_time_str, '%Y-%m-%d %H:%M:%S')
+    localized_time = from_zone.localize(specific_time)
+   
+    converted_time = localized_time.astimezone(to_zone)
+        
+    return converted_time
 
 
   def decimal_to_dms(degrees, is_latitude=True):
@@ -175,11 +177,6 @@ class Common:
       
       time.sleep(10)
     
-    
-    
-    
-    
-    
     while (True):
       now = datetime.now()
       min = now.minute
@@ -187,28 +184,33 @@ class Common:
       #if min % 1 == 0:
       #  sm.AIAircraft_GetPosition(4, sm.air_1_obj)
     
-      if min % 5 == 0:
-        Arrival.Check_Arrived_Flights()
+      #if min % 5 == 0:
+      #  Arrival.Check_Arrived_Flights()
       #  Departure.Check_Departed_aircraft()
 
 
-      if min % 3 == 0 and prev_min != min:
+      if min % INJECTION_TIME == 0 and prev_min != min:
         #print(sm.running)
         #print(sm.paused)
-        if Departure.Departure_Index < 40 :
+        if Departure.Departure_Index < MAX_DEPARTURE :
           Departure.Assign_Flt_plan()
-          Arrival.inject_Traffic_Arrival()
-          Arrival.Arrival_Index += 1
           Departure.Departure_Index += 1
         else:
-          print("Completed injection")
+          print("Departure injection Completed")
         
+        if Arrival.Arrival_Index < MAX_ARRIVAL :
+          Arrival.inject_Traffic_Arrival()
+          Arrival.Arrival_Index += 1
+        else:
+          print("Arrival injection Completed")
+       
+       
         #if Departure.Departure_Index >= len(Departure.FR24_Departure_Traffic):
         #  Departure.Departure_Index = 0
         #  Departure.Get_Departure(SRC_AIRPORT_IATA)
         #  Departure.Inject_Parked_Traffic()
         #  Departure.Get_SID(SRC_AIRPORT_IACO,ACTIVE_RUNWAY)
-#
+
         #
         #if Arrival.Arrival_Index >= len(Arrival.FR24_Arrival_Traffic):
         #  Arrival.Arrival_Index = 0
@@ -233,61 +235,81 @@ class Arrival:
 
   # Extract and print flight information
   def Get_Arrival(airport):
-      
-      # Set up the WebDriver (this assumes you have ChromeDriver installed)
-      driver = webdriver.Chrome(options=Common.chrome_options)
-      driver.set_window_size(945, 1012)
-      #window_size = driver.get_window_size()
-      #print(window_size)
-      url = "https://www.flightradar24.com/data/airports/" + airport +"/arrivals"
-      driver.get(url)
-      time.sleep(10)
-  
-      flight_elements = driver.find_elements(By.XPATH, "//td")  # Example XPath
-  
-      prev_lin = ""
-      index = 0
-      for flight in flight_elements:
-        flight_info = flight.text 
-        if  prev_lin != flight_info:
-          #print(flight_info)
-          flight_info_list = flight_info.split("\n")
-          #print(flight_info_list)
-          if flight_info_list[0].split(" ")[0] == "Estimated":
-            if flight_info_list[2] in Arrival.FR24_Arrival_Traffic['Call'].values:
-              continue
-            last_element = len(Arrival.FR24_Arrival_Traffic)
-            if last_element < MAX_ARRIVAL:
-              try:
-                last_element = len(Arrival.FR24_Arrival_Traffic)
-                Estimate_time =  flight_info_list[0].split(" ")[1]
-                Scheduled_time  = flight_info_list[1]
-                Call =  flight_info_list[2]
-                Src =  flight_info_list[3]
-                Type =  flight_info_list[4]
-                Ocio =  flight_info_list[-1]
-                qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+airport+"""%'"""
-                with Common.engine_fldatabase.connect() as conn:
-                    des_air = pd.read_sql(sql=qry_str, con=conn.connection)
-                
-                qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+re.search(r'\((.*?)\)', Src).group(1).upper()+"""%'"""
-                with Common.engine_fldatabase.connect() as conn:
-                    src_air = pd.read_sql(sql=qry_str, con=conn.connection)
-                
-                Src_ICAO = src_air["icao"].iloc[-1]
-                Dest_ICAO = des_air["icao"].iloc[-1]
-                local_arrival_time = Common.Get_Timezone(Dest_ICAO,Estimate_time.split(":")[0],Estimate_time.split(":")[1])
-                Arrival.FR24_Arrival_Traffic.loc[last_element] = [Estimate_time, Scheduled_time, Call, Src, Type,Ocio,Src_ICAO,Dest_ICAO,local_arrival_time]
-              except:
-                print(str(flight_info_list) + " not found")
-        index+=1  
-        prev_lin = flight_info
-      Arrival.FR24_Arrival_Traffic = Arrival.FR24_Arrival_Traffic.sort_values(by='Estimate_time').reset_index(drop=True)
-      print(Arrival.FR24_Arrival_Traffic)
-      # Close the browser
-      driver.quit()
-      time.sleep(5)
+    # Set up the WebDriver (this assumes you have ChromeDriver installed)
+    driver = webdriver.Chrome(options=Common.chrome_options)
+    driver.set_window_size(945, 1012)
+    #window_size = driver.get_window_size()
+    #print(window_size)
+    url = "https://www.flightradar24.com/data/airports/" + airport +"/arrivals"
+    driver.get(url)
+    time.sleep(10)
 
+    # Get current date and time 
+    current_datetime = datetime.now()
+
+    # Get the next day's date and time
+    next_day_datetime = current_datetime + timedelta(days=1)
+
+    flight_elements = driver.find_elements(By.XPATH, "//td")  # Example XPath
+  
+    prev_lin = ""
+    Check_New_Day = False
+    prev_AM_PM = ""
+    for flight in flight_elements:
+      flight_info = flight.text 
+      if  prev_lin != flight_info:
+        #print(flight_info)
+        flight_info_list = flight_info.split("\n") 
+        #print(flight_info_list)
+        if flight_info_list[0].split(" ")[0] == "Estimated" or flight_info_list[0].split(" ")[0] == "Delayed":
+          if flight_info_list[2] in Arrival.FR24_Arrival_Traffic['Call'].values:
+            continue
+          last_element = len(Arrival.FR24_Arrival_Traffic)
+          if last_element < MAX_ARRIVAL:
+            try:
+              last_element = len(Arrival.FR24_Arrival_Traffic)
+              Estimate_time = (datetime.strptime(str(flight_info_list[0].split(" ")[1] +" "+ flight_info_list[0].split(" ")[2]), '%I:%M %p')).strftime('%H:%M')
+              Scheduled_time  =  (datetime.strptime(str(flight_info_list[1]), '%I:%M %p')).strftime('%H:%M')
+              Call =  flight_info_list[2]
+              Src =  flight_info_list[3]
+              Type =  flight_info_list[4]
+              Ocio =  flight_info_list[-1]
+              qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+airport+"""%'"""
+              with Common.engine_fldatabase.connect() as conn:
+                  des_air = pd.read_sql(sql=qry_str, con=conn.connection)
+              
+              qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+re.search(r'\((.*?)\)', Src).group(1).upper()+"""%'"""
+              with Common.engine_fldatabase.connect() as conn:
+                  src_air = pd.read_sql(sql=qry_str, con=conn.connection)
+              
+              Src_ICAO = src_air["icao"].iloc[-1]
+              Dest_ICAO = des_air["icao"].iloc[-1]
+
+              if flight_info_list[0].split(" ")[2] == "AM" and prev_AM_PM == "PM":
+                Check_New_Day = True
+              if Check_New_Day == True:
+                day = next_day_datetime.day
+                month = next_day_datetime.month
+                year = next_day_datetime.year
+              else:
+                day = current_datetime.day
+                month = current_datetime.month
+                year = current_datetime.year
+
+              Specific_Time = str(year)+"-"+str(month)+"-"+str(day)+ " " + Estimate_time.split(":")[0] + ":" + Estimate_time.split(":")[1] + ":00" 
+              Local_arrival_time =  Common.Get_Timezone(Dest_ICAO,Specific_Time)
+              Arrival.FR24_Arrival_Traffic.loc[last_element] = [Estimate_time, Scheduled_time, Call, Src, Type,Ocio,Src_ICAO,Dest_ICAO,Local_arrival_time]
+              prev_AM_PM = flight_info_list[0].split(" ")[2]
+            except:
+              print(str(flight_info_list) + " not found")
+      
+      prev_lin = flight_info
+    
+    Arrival.FR24_Arrival_Traffic = Arrival.FR24_Arrival_Traffic.sort_values(by='Local_arrival_time',ascending=True).reset_index(drop=True)
+    print(Arrival.FR24_Arrival_Traffic)
+    # Close the browser
+    driver.quit()
+    time.sleep(5)
 
   def Get_STAR(airport,RW):
   
@@ -537,7 +559,6 @@ class Departure:
   departure_string = ""
   Departure_Index = 0
 
-
   def Get_Departure(airport):
    
     # Set up the WebDriver (this assumes you have ChromeDriver installed)
@@ -547,24 +568,33 @@ class Departure:
     driver.get(url)
     time.sleep(10)
 
+    # Get current date and time 
+    current_datetime = datetime.now()
+
+    # Get the next day's date and time
+    next_day_datetime = current_datetime + timedelta(days=1)
+
     flight_elements = driver.find_elements(By.XPATH, "//td")  # Example XPath
     
     prev_lin = ""
     index = 0
+    Check_New_Day = False
+    prev_AM_PM = ""
     for flight in flight_elements:
       flight_info = flight.text 
       if  prev_lin != flight_info:
+        #print(flight_info)
         flight_info_list = flight_info.split("\n")
         #print(flight_info_list)
-        if flight_info_list[0].split(" ")[0] == "Estimated":
+        if flight_info_list[0].split(" ")[0] == "Estimated" or flight_info_list[0].split(" ")[0] == "Delayed":
           if flight_info_list[2] in Departure.FR24_Departure_Traffic['Call'].values:
             continue
           last_element = len(Departure.FR24_Departure_Traffic)
           if last_element < MAX_DEPARTURE:
             try:
               last_element = len(Departure.FR24_Departure_Traffic)
-              Estimate_time =  flight_info_list[0].split(" ")[2]
-              Scheduled_time  = flight_info_list[1]
+              Estimate_time = (datetime.strptime(str(flight_info_list[0].split(" ")[2] +" "+ flight_info_list[0].split(" ")[3]), '%I:%M %p')).strftime('%H:%M')
+              Scheduled_time  =  (datetime.strptime(str(flight_info_list[1]), '%I:%M %p')).strftime('%H:%M')
               Call =  flight_info_list[2]
               Des =  flight_info_list[3]
               Type =  flight_info_list[4]
@@ -579,19 +609,32 @@ class Departure:
               
               Src_ICAO = src_air["icao"].iloc[-1]
               Dest_ICAO = des_air["icao"].iloc[-1]
-              local_depart_time = Common.Get_Timezone(Src_ICAO,Estimate_time.split(":")[0],Estimate_time.split(":")[1])
-              Departure.FR24_Departure_Traffic.loc[last_element] = [Estimate_time, Scheduled_time, Call, Des, Type,Ocio,Src_ICAO,Dest_ICAO,local_depart_time]
+
+              if flight_info_list[0].split(" ")[3] == "AM" and prev_AM_PM == "PM":
+                Check_New_Day = True
+              
+              if Check_New_Day == True:
+                day = next_day_datetime.day
+                month = next_day_datetime.month
+                year = next_day_datetime.year
+              else:
+                day = current_datetime.day
+                month = current_datetime.month
+                year = current_datetime.year
+              Specific_Time = str(year)+"-"+str(month)+"-"+str(day)+ " " + Estimate_time.split(":")[0] + ":" + Estimate_time.split(":")[1] + ":00" 
+              Local_depart_time =  Common.Get_Timezone(Src_ICAO,Specific_Time)
+              Departure.FR24_Departure_Traffic.loc[last_element] = [Estimate_time, Scheduled_time, Call, Des, Type,Ocio,Src_ICAO,Dest_ICAO,Local_depart_time]
+              prev_AM_PM = flight_info_list[0].split(" ")[3]
             except:
                 print(str(flight_info_list) + " not found")
 
       index+=1  
       prev_lin = flight_info
-    Departure.FR24_Departure_Traffic = Departure.FR24_Departure_Traffic.sort_values(by='Estimate_time').reset_index(drop=True)
+    Departure.FR24_Departure_Traffic = Departure.FR24_Departure_Traffic.sort_values(by='Local_depart_time',ascending=True).reset_index(drop=True)
     print(Departure.FR24_Departure_Traffic)
     # Close the browser
     driver.quit()
     time.sleep(5)
-
 
   def Get_SID(airport,RW):
 
@@ -813,6 +856,11 @@ class Departure:
 
 Common.Run()
 
+
+
+#For Testing
+#Arrival.Get_Arrival("BOM")
+#Departure.Get_Departure("BOM")
 
 #Arrival.Get_STAR("VABB","27")
 #Arrival.Create_flight_plan_arr("VOBL","VABB")
