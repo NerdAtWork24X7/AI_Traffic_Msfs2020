@@ -192,13 +192,13 @@ class Common:
       if min % INJECTION_TIME == 0 and prev_min != min:
         #print(sm.running)
         #print(sm.paused)
-        if Departure.Departure_Index < MAX_DEPARTURE :
+        if Departure.Departure_Index < len(Departure.FR24_Departure_Traffic) :
           Departure.Assign_Flt_plan()
           Departure.Departure_Index += 1
         else:
           print("Departure injection Completed")
         
-        if Arrival.Arrival_Index < MAX_ARRIVAL :
+        if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic) :
           Arrival.inject_Traffic_Arrival()
           Arrival.Arrival_Index += 1
         else:
@@ -500,7 +500,7 @@ class Arrival:
       
     if Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Call"] in SimConnect.MSFS_AI_Arrival_Traffic['Call'].values:
       return
-    if Arrival.Arrival_Index < MAX_ARRIVAL:
+    if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic):
       last_element = len(SimConnect.MSFS_AI_Arrival_Traffic)
       Estimate_time = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Estimate_time"]
       Call = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Call"]
@@ -785,7 +785,7 @@ class Departure:
       if row["Call"] in SimConnect.MSFS_AI_Departure_Traffic['Call'].values:
         continue
       last_element = len(SimConnect.MSFS_AI_Departure_Traffic)
-      if last_element < MAX_DEPARTURE:
+      if last_element < len(Departure.FR24_Departure_Traffic):
         Estimate_time = row["Estimate_time"]
         Call = row["Call"]
         Type = row["Type"]
