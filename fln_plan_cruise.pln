@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>  
+<SimBase.Document Type="AceXML" version="1,0">
+    <Descr>AceXML Document</Descr>
+    <FlightPlan.FlightPlan>
+        <Title>NUE to CDG</Title>
+        <FPType>IFR</FPType>
+        <CruisingAlt>32000</CruisingAlt>
+        <DepartureID>NUE</DepartureID>
+        <DepartureLLA>S11° 46' 6.99",E19° 53' 50.04",+004446.00</DepartureLLA>
+        <DestinationID>CDG</DestinationID>
+        <DestinationLLA>N43° 50' 11.0",W81° 36' 24.0",+000870.00</DestinationLLA>
+        <Descr>NUE, CDG</Descr>
+        <DepartureName>Luena</DepartureName>
+        <DestinationName>Dungannon</DestinationName>
+        <AppVersion>
+            <AppVersionMajor>10</AppVersionMajor>
+            <AppVersionBuild>60327</AppVersionBuild>
+        </AppVersion>
+        <ATCWaypoint id="NUE">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>S11° 46' 6.99",E19° 53' 50.04",+004446.00</WorldPosition>
+            <ICAO>
+                <ICAOIdent>NUE</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+       <ATCWaypoint id="CDG">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N43° 50' 11.0",W81° 36' 24.0",+000870.00</WorldPosition>
+            <ICAO>
+                <ICAOIdent>CDG</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+    </FlightPlan.FlightPlan>
+</SimBase.Document>

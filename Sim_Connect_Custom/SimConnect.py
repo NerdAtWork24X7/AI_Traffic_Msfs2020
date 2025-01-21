@@ -31,13 +31,11 @@ class AircraftData(ctypes.Structure):
 
 class SimConnect:
 	
-	MSFS_AI_Arrival_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Dest","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","altitude","Prv_Lat","Prv_Log","Stuck","Req_Id","Obj_Id"])
-	MSFS_AI_Departure_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Dest","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","altitude","Prv_Lat","Prv_Log","Stuck","Req_Id","Obj_Id"])
-	MSFS_User_Aircraft =  pd.DataFrame(columns=["Cur_Lat","Cur_Log","altitude","Req_Id","Obj_Id"])
-	
-	
-	
-	
+	MSFS_AI_Arrival_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Req_Id","Obj_Id"])
+	MSFS_AI_Departure_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Req_Id","Obj_Id"])
+	MSFS_User_Aircraft =  pd.DataFrame(columns=["Cur_Lat","Cur_Log","Altitude","Req_Id","Obj_Id"])
+	MSFS_Cruise_Traffic = pd.DataFrame(columns=["Call","Type","Src","Des","Cur_Lat","Cur_Log","Altitude","Heading","Speed","Flt_plan","Req_Id","Obj_Id"])
+		
 	def IsHR(self, hr, value):
 		_hr = ctypes.HRESULT(hr)
 		return ctypes.c_ulong(_hr.value).value == value
@@ -385,6 +383,25 @@ class SimConnect:
 		return retval
 
 
+	def AICreateNonATCAircraft(self, name, Tailnum, alt, lat, lon,pitch,bank,hdg,gnd,speed,rqst):
+		simInitPos = SIMCONNECT_DATA_INITPOSITION()
+		simInitPos.Altitude = alt
+		simInitPos.Latitude = lat
+		simInitPos.Longitude = lon
+		simInitPos.Pitch = pitch
+		simInitPos.Bank = bank
+		simInitPos.Heading = hdg
+		simInitPos.OnGround = gnd
+		simInitPos.Airspeed = speed
+		retval = self.dll.AICreateNonATCAircraft(
+			self.hSimConnect,
+			name.encode(),
+			Tailnum.encode(),
+			simInitPos,
+			rqst
+		)
+		return retval
+ 
 	def AIRemoveObject(self, objid,rqst):
 		retval = self.dll.AIRemoveObject(
 		    self.hSimConnect,
