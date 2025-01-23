@@ -60,9 +60,6 @@ class Common:
   Retry_SRC = 0
   Retry_DES = 0
   
- 
-  
-  
   Src_Airport = pd.DataFrame(columns=['Src', 'Lat', "Lon","Altitude"])
   Des_Airport = pd.DataFrame(columns=['Src', 'Lat', "Lon","Altitude"]) 
   
@@ -75,37 +72,28 @@ class Common:
     
     lon = src_df.iloc[-1]["lonx"]
     lat = src_df.iloc[-1]["laty"]
+    
     tf = TimezoneFinder()
     timezone = tf.timezone_at(lng=lon, lat=lat)
-    
-    # Define the timezone object for the local timezone
     from_zone = pytz.timezone(timezone)
     to_zone = get_localzone()
     
     specific_time = datetime.strptime(specific_time_str, '%Y-%m-%d %H:%M:%S')
     localized_time = from_zone.localize(specific_time)
-   
     converted_time = localized_time.astimezone(to_zone)
-        
+    
     return converted_time
 
 
   def decimal_to_dms(degrees, is_latitude=True):
-    # Get the absolute value of the degrees
+
     abs_deg = abs(degrees)
-    
-    # Calculate the degrees
     d = int(abs_deg)
-    
-    # Calculate the minutes
     minutes = (abs_deg - d) * 60
     m = int(minutes)
-    
-    # Calculate the seconds
     seconds = (minutes - m) * 60
-    s = round(seconds, 2)  # Round to 2 decimal places for better readability
-    
-    # Determine the direction (N/S for latitude, E/W for longitude)
+    s = round(seconds, 2) 
+
     if is_latitude:
         direction = "N" if degrees >= 0 else "S"
     else:
@@ -115,11 +103,10 @@ class Common:
 
 
   def format_coordinates(lat, lon, altitude):
-    # Convert latitude and longitude to DMS format
+
     lat_dms = Common.decimal_to_dms(lat, is_latitude=True)
     lon_dms = Common.decimal_to_dms(lon, is_latitude=False)
     
-    # Format the altitude (if any) with a sign and 2 decimal places
     altitude_str = f"{altitude:+010.2f}"
     
     return f"{lat_dms},{lon_dms},{altitude_str}"
@@ -136,7 +123,7 @@ class Common:
     df_close_waypoint = pd.DataFrame()
     pre_dis = 99999999.0
     for index, waypoint in des_waypoint_df.iterrows():
-      point2 = (waypoint["laty"], waypoint["lonx"])   #Cordinates of ai
+      point2 = (waypoint["laty"], waypoint["lonx"])
       Cur_Dis = geodesic(point_src, point2).km
       Des_Dis = geodesic(point_des, point2).km
       if Cur_Dis < pre_dis and Des_Dis < max_dis:
@@ -160,14 +147,14 @@ class Common:
         qry_str = '''SELECT "_rowid_",* FROM "main"."mytable" WHERE "iata" LIKE '%'''+IATA_call+'''%' '''
         src_df = pd.read_sql(sql=qry_str, con=conn.connection)
         icao = src_df.iloc[0]["icao"]
-      #print(icao)
+
       # Iterate over all ModelMatchRule elements
       for model_match_rule in root.findall('ModelMatchRule'):
         # Check if the TypeCode matches
         if typecode == model_match_rule.get('TypeCode') and icao == model_match_rule.get('CallsignPrefix'):
             model_name_cur = (model_match_rule.get('ModelName')).split("//")
             break
-      #print(model_name[0])
+
       model_name = model_name_cur[0]
     except:
       print("Error in flight matching")
@@ -213,15 +200,6 @@ class Common:
     
     
     prev_min = 0
-    while(False):
-      
-      if Departure.Departure_Index < 20 :
-        Departure.Assign_Flt_plan()
-        Arrival.inject_Traffic_Arrival()
-        Arrival.Arrival_Index += 1
-        Departure.Departure_Index += 1
-      
-      time.sleep(10)
     
     while (True):
       now = datetime.now()
@@ -321,39 +299,36 @@ class Cruise:
   def Get_Cruise_Traffic(lat,lon,dist):
     
     
-    url = "https://adsbx-flight-sim-traffic.p.rapidapi.com/api/aircraft/json/lat/" + str(lat) + "/lon/" + str(lon) +"/dist/" + str(dist) +"/"
-    
-    headers = {
-    	"x-rapidapi-key": config.config["key"],
-    	"x-rapidapi-host": config.config["host"]
-    }
-    response = requests.get(url, headers=headers)
-    traffic_data = response.json()
+    #url = "https://adsbx-flight-sim-traffic.p.rapidapi.com/api/aircraft/json/lat/" + str(lat) + "/lon/" + str(lon) +"/dist/" + str(dist) +"/"
+    #
+    #headers = {
+    #	"x-rapidapi-key": config.config["key"],
+    #	"x-rapidapi-host": config.config["host"]
+    #}
+    #response = requests.get(url, headers=headers)
+    #traffic_data = response.json()
     
        
-    ## Open the JSON file
-    #with open('test.json', 'r') as file:
-    #  # Load the JSON data from the file and convert to a dictionary
-    #  data = json.load(file)
-
-    
+    # Open the JSON file
+    with open('test.json', 'r') as file:
+      # Load the JSON data from the file and convert to a dictionary
+      traffic_data = json.load(file)
     
     for flight in traffic_data["ac"]:
-      #print(flight) 
       try:
         if int(flight["gnd"]) == 0:
           if flight["call"] in Cruise.Cruise_Traffic_ADB['Call'].values:
             continue
           last_element = len(Cruise.Cruise_Traffic_ADB)
-          if last_element < MAX_CRUISE_AI_FLIGHTS and int(flight["alt"]) > 10000:
-            Call = flight["call"]
-            Type = flight["type"]
-            Lat = flight["lat"]
-            Lon = flight["lon"]
-            Altitude = flight["alt"]
-            Heading = flight["trak"]
-            Speed = flight["spd"]
-            
+          if last_element < MAX_CRUISE_AI_FLIGHTS and int(flight["alt"]) > CRUISE_ALTITUDE:
+            Call = str(flight["call"])
+            Type = str(flight["type"])
+            Lat = str(flight["lat"])
+            Lon = str(flight["lon"])
+            Altitude = str(flight["alt"])
+            Heading = str(flight["trak"])
+            Speed = str(flight["spd"])
+             
             #qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "icao" LIKE '%"""+flight["from"].spilt(" ")[0]+"""%'"""
             #with Common.engine_fldatabase.connect() as conn:
             #  src_air = pd.read_sql(sql=qry_str, con=conn.connection)
@@ -369,6 +344,7 @@ class Cruise:
             
             Des_ICAO = flight["to"].split(" ")[0]
             
+            
             Cruise.Cruise_Traffic_ADB.loc[last_element] = [Call,Type,Src_ICAO,Des_ICAO,Lat,Lon,Altitude,Heading,Speed]
       except:
         print(str(flight) + "Flight not found")
@@ -380,14 +356,14 @@ class Cruise:
   def Inject_Cruise_Traffic():
     
     for flight in Cruise.Cruise_Traffic_ADB.iterrows():
-      print(flight[1]["Call"])
+      print(flight["Call"])
       if flight[1]["Call"] in SimConnect.MSFS_Cruise_Traffic['Call'].values:
         continue
       last_element = len(SimConnect.MSFS_Cruise_Traffic)
       Call = flight[1]["Call"]
       Type = flight[1]["Type"]
-      Src  = flight[1]["Src_ICAO"]
-      Des = flight[1]["Des_ICAO"]
+      Src  = flight[1]["Src"]
+      Des = flight[1]["Des"]
       Cur_Lat = flight[1]["Lat"]
       Cur_Log = flight[1]["Lon"]
       Altitude = flight[1]["Altitude"]
@@ -402,16 +378,23 @@ class Cruise:
       SimConnect.MSFS_Cruise_Traffic.loc[last_element] = [Call,Type,Src,Des,Cur_Lat,Cur_Log,Altitude,Heading,Speed,Flt_plan,Req_Id,Obj_Id]
       try:
         Livery_name = Common.Get_flight_match(Call,Type)
+        flt_plan = Cruise.Create_flt_Plan(flight)
         print("Crusing----" + Call + " " + Type + " " + str(Livery_name))
-        #result =sm.AICreateNonATCAircraft(Livery_name, Call, Altitude, Cur_Lat, Cur_Log,Pitch,Bank,Heading,Gnd,Speed,Req_Id)
-        #result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_arr",float(1),False,Req_Id)
+        #result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
         Common.Global_req_id+=1
+        time.sleep(2)
       except:
         print("Cannot Inject Cruise Flight")
 
   
-  def Create_flt_Plan(Src,Des,Altitude):
-    crusing_alt = Altitude
+  def Create_flt_Plan(flight):
+    Src = flight["Src"][1]
+    Des = flight["Des"][1]
+    Lat = flight["Cur_Lat"][1]
+    Lon = flight["Cur_Log"][1]
+    crusing_alt = flight["Altitude"][1]
+  
+    
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+Src+"""%'"""
     with Common.engine_fldatabase.connect() as conn:
       src_df = pd.read_sql(sql=qry_str, con=conn.connection) 
@@ -424,8 +407,29 @@ class Cruise:
       des_df = pd.read_sql(sql=qry_str, con=conn.connection) 
     des_name = des_df.iloc[-1]["name"] 
     des_Pos =  Common.format_coordinates(float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),float(des_df.iloc[-1]["altitude"]))
-    fln_plan = """<?xml version="1.0" encoding="UTF-8"?> \
- 
+    
+    with Common.engine_fldatabase.connect() as conn:
+      qry_str = '''SELECT"_rowid_",* FROM "main"."waypoint" WHERE "laty" > '''  + str(int(Lat)) + ''' AND "laty" < '''  + str(int(Lat) + 1) + ''' AND "lonx" > '''  + str(int(Lon)) + '''  AND "lonx" < '''  + str(int(Lon) + 1) + ''' '''
+      way_df = pd.read_sql(sql=qry_str, con=conn.connection)
+      print(way_df)
+    
+    point1 = (Lat,Lon)
+    prev_dist = 99999999.0
+    df_nearest_waypoint = pd.DataFrame()
+    for waypoint in way_df.iterrows():
+        point2 = (float(waypoint[1]["laty"]),float(waypoint[1]["lonx"]))
+        Dis = geodesic(point1, point2).km
+        if Dis < prev_dist:
+          df_nearest_waypoint = waypoint
+          prev_dist = Dis
+
+    waypoint_Pos = Common.format_coordinates(float(df_nearest_waypoint[1]["laty"]),float(df_nearest_waypoint[1]["lonx"]),crusing_alt)
+    waypoint_id = df_nearest_waypoint[1]["ident"]
+    waypoint_reg = df_nearest_waypoint[1]["region"]
+    
+    
+    fln_plan = \
+"""<?xml version="1.0" encoding="UTF-8"?>
 <SimBase.Document Type="AceXML" version="1,0">
     <Descr>AceXML Document</Descr>
     <FlightPlan.FlightPlan>
@@ -449,7 +453,17 @@ class Cruise:
             <ICAO>
                 <ICAOIdent>"""+Src + """</ICAOIdent>
             </ICAO>
-        </ATCWaypoint>\n""" + Departure.departure_string + """       <ATCWaypoint id=\""""+ Des +"""\">
+        </ATCWaypoint>
+        <ATCWaypoint id=\"""" + waypoint_id + """\">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>"""+waypoint_Pos+"""</WorldPosition>
+            <SpeedMaxFP>400</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>""" + waypoint_reg + """</ICAORegion>
+                <ICAOIdent>""" + waypoint_id + """</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id=\""""+ Des +"""\">
             <ATCWaypointType>Airport</ATCWaypointType>
             <WorldPosition>"""+des_Pos+"""</WorldPosition>
             <ICAO>
@@ -463,69 +477,74 @@ class Cruise:
       file.write(fln_plan)
     return fln_plan
 
-  
-  def Assign_Flt_Plan():
-    
-    for flight in SimConnect.MSFS_Cruise_Traffic.iterrows():
-      #print(flight[1])
-      if flight[1]["Flt_plan"] == 0:
-        #try:
-          Call = flight[1]["Call"]
-          Src = flight[1]["Src"]
-          Des = flight[1]["Des"]
-          Alitude = flight[1]["Altitude"]
-          Obj_Id = flight[1]["Obj_Id"]
-          Req_Id = Common.Global_req_id
-          Src = "EDDF"
-          Des = "VABB"
-          flt_plan = Cruise.Create_flt_Plan(Src,Des,Alitude)
-          
-          SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Flt_plan"] = 1
-          #sm.AISetAircraftFlightPlan(Obj_Id, current_dir + "/fln_plan_dep",Req_Id)
-          Common.Global_req_id+=1
-        #except:
-        #  print("Canot assign flight plan to cruise flight")
-    
-    print("------------Flight plan assignment------------------------")      
-    print(SimConnect.MSFS_Cruise_Traffic)
-      
-    
-
-
 
 class Arrival:
 
   FR24_Arrival_Traffic = pd.DataFrame(columns=['Estimate_time', 'Scheduled_time', "Call","Src", "Type",'Ocio',"Src_ICAO","Des_ICAO","Local_arrival_time"])
+  ADBS_Arrival_Traffic = pd.DataFrame(columns=[ "Call","Lat","Lon","Altitude","Speed"])
  
   Arrival_Index = 0
   approach_string = ""
 
 
+  def Get_Arrival_ADB_S(lat,lon,dist):
+    
+    #url = "https://adsbx-flight-sim-traffic.p.rapidapi.com/api/aircraft/json/lat/" + str(lat) + "/lon/" + str(lon) +"/dist/" + str(dist) +"/"
+    #
+    #headers = {
+    #	"x-rapidapi-key": config.config["key"],
+    #	"x-rapidapi-host": config.config["host"]
+    #}
+    #response = requests.get(url, headers=headers)
+    #traffic_data = response.json()
+    
+       
+    # Open the JSON file
+    with open('test.json', 'r') as file:
+      # Load the JSON data from the file and convert to a dictionary
+      traffic_data = json.load(file)
+    
+    for flight in traffic_data["ac"]:
+      try:
+        if int(flight["gnd"]) == 0:
+          if flight["call"] in Arrival.ADBS_Arrival_Traffic['Call'].values:
+            continue
+          last_element = len(Arrival.ADBS_Arrival_Traffic)
+          if last_element < MAX_CRUISE_AI_FLIGHTS and int(flight["alt"]) > CRUISE_ALTITUDE:
+            Call = str(flight["Call"])
+            Lat = str(flight["Lat"])
+            Lon = str(flight["Lon"])
+            Altitude = str(flight["Altitude"])
+            Speed = str(flight["Speed"])           
+            
+            Arrival.ADBS_Arrival_Traffic.loc[last_element] = [Call,Lat,Lon,Altitude,Speed]
+      except:
+        print(str(flight) + "Flight not found")
+          
+    print(Arrival.ADBS_Arrival_Traffic)
+      
+
+
   # Extract and print flight information
   def Get_Arrival(airport):
-    # Set up the WebDriver (this assumes you have ChromeDriver installed)
+
     driver = webdriver.Chrome(options=Common.chrome_options)
     driver.set_window_size(945, 1012)
-    #window_size = driver.get_window_size()
-    #print(window_size)
+
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "icao" LIKE '%"""+airport+"""%'"""
     with Common.engine_fldatabase.connect() as conn:
       des_air = pd.read_sql(sql=qry_str, con=conn.connection)
     airport_iata = des_air["iata"].iloc[-1]
     
-    
-    
     url = "https://www.flightradar24.com/data/airports/" + airport_iata +"/arrivals"
     driver.get(url)
+    
     time.sleep(10)
 
-    # Get current date and time 
     current_datetime = datetime.now()
-
-    # Get the next day's date and time
     next_day_datetime = current_datetime + timedelta(days=1)
 
-    flight_elements = driver.find_elements(By.XPATH, "//td")  # Example XPath
+    flight_elements = driver.find_elements(By.XPATH, "//td")
   
     prev_lin = ""
     Check_New_Day = False
@@ -533,9 +552,7 @@ class Arrival:
     for flight in flight_elements:
       flight_info = flight.text 
       if  prev_lin != flight_info:
-        #print(flight_info)
         flight_info_list = flight_info.split("\n") 
-        #print(flight_info_list)
         if flight_info_list[0].split(" ")[0] == "Estimated" or flight_info_list[0].split(" ")[0] == "Delayed":
           if flight_info_list[2] in Arrival.FR24_Arrival_Traffic['Call'].values:
             continue
@@ -579,7 +596,7 @@ class Arrival:
     
     Arrival.FR24_Arrival_Traffic = Arrival.FR24_Arrival_Traffic.sort_values(by='Local_arrival_time',ascending=True).reset_index(drop=True)
     print(Arrival.FR24_Arrival_Traffic)
-    # Close the browser
+
     driver.quit()
     time.sleep(5)
 
@@ -588,7 +605,7 @@ class Arrival:
     with Common.engine_fldatabase.connect() as conn:
       qry_str = '''SELECT "_rowid_", * FROM "main"."approach" WHERE "airport_ident" LIKE '%'''+airport+'''%' ESCAPE '\\' AND "type" LIKE '%GPS%' ESCAPE '\\' AND "suffix" LIKE '%A%' ESCAPE '\\' AND "runway_name" LIKE '%'''+RW+'''%' ESCAPE '\\'LIMIT 0, 49999;'''
       src_df = pd.read_sql(sql=qry_str, con=conn.connection)
-      #print(src_df)
+
     
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+airport+"""%'"""
     with Common.engine_fldatabase.connect() as conn:
@@ -610,7 +627,6 @@ class Arrival:
             point1 = (float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]))
             point2 = (way_df.iloc[-1]["laty"], way_df.iloc[-1]["lonx"]) 
             distance = geodesic(point1, point2).km
-            #print(distance)
             if distance > 25 and distance < prev_distance:
               Max_app_df = Cur_app
               App_Name = app["fix_ident"]
@@ -643,7 +659,6 @@ class Arrival:
         Max_app_df.loc[index,"fix_lonx"] = way_df["lonx"].iloc[-1]
         Max_app_df.loc[index,"fix_laty"] = way_df["laty"].iloc[-1]
         point1 = (float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]))
-        #point1 = (float(df_close_waypoint["laty"]),float(df_close_waypoint["lonx"]))
         point2 = (way_df["laty"].iloc[-1], way_df["lonx"].iloc[-1]) 
         distance = geodesic(point1, point2).km
         Max_app_df.loc[index,"distance"] = distance
@@ -684,10 +699,6 @@ class Arrival:
     des_name = des_df.iloc[-1]["name"] 
     des_Pos =  Common.format_coordinates(float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),float(des_df.iloc[-1]["altitude"]))
     
-    #if Arrival.Arrival_Index < 10:
-    #    max_dist = 40 + (Arrival.Arrival_Index * 3)
-    #else :
-    #  max_dist = 60
     max_dist = 50
     df_close_waypoint = Common.get_close_waypoint(float(src_df.iloc[-1]["laty"]),float(src_df.iloc[-1]["lonx"]),des,float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),max_dist)
   
@@ -1133,7 +1144,7 @@ class Departure:
 #Arrival.Get_STAR("VABB","27")
 #Arrival.Create_flight_plan_arr("VOBL","VABB")
 
-#Cruise.Get_Cruise_Traffic()
+#Cruise.Get_Cruise_Traffic(50.0333061218262,8.57046508789063,25)
 #Cruise.Inject_Cruise_Traffic()
 #Cruise.Assign_Flt_Plan()
 
@@ -1142,3 +1153,7 @@ class Departure:
 #SimConnect.MSFS_User_Aircraft.loc[0] = [20.091552734375,72.865966796875,20000,0, 0,0,0]
 #Common.Run()
 
+#flight = pd.DataFrame(columns=["Call","Type","Src","Des","Cur_Lat","Cur_Log","Altitude","Heading","Speed","Flt_plan","Req_Id","Obj_Id"])
+#flight.loc[1] = ("DLH32","Type","EDDF","VABB",20.31552734375,72.565966796875,20000,0,320,1,0,0)
+#print(flight)
+#Cruise.Create_flt_Plan(flight)
