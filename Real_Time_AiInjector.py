@@ -39,6 +39,9 @@ GROUND_INJECTION_TIME = 2
 CRUISE_INJECTION_TIME = 10
 MAX_CRUISE_AI_FLIGHTS = 20
 
+SPWAN_DIST = 200
+SPWAN_ALTITUDE = 10000
+
 current_dir = os.getcwd()
 
 
@@ -289,6 +292,14 @@ class Common:
             Cruise.Get_Cruise_Traffic(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],25)
             Cruise.Inject_Cruise_Traffic()
           
+        
+        if min % 3 == 0:
+          Departure.Check_Traffic_Departure()
+        if min % 5 == 0:
+          Arrival.Check_Traffic_Arrival()
+        if min % 7 == 0:
+          Cruise.Check_Traffic_Cruise()
+          
         prev_min = min
         print("------------------------------Injecting---------------------------")
       
@@ -463,6 +474,23 @@ class Cruise:
       file.write(fln_plan)
     return fln_plan
 
+  def Check_Traffic_Cruise():
+
+    point1  = (SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"])
+    Altitude1 = SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"]
+    for index, flight in SimConnect.MSFS_Cruise_Traffic.iterrows():
+      sm.AIAircraft_GetPosition(flight[1]["Req_Id"],flight[1]["Obj_Id"])
+      time.sleep(1)
+      #Check Dist
+      point2 = (flight[1]["Cur_Lat"] ,flight[1]["Cur_Log"])
+      dis = geodesic(point1, point2).km
+
+      Altitude2 = flight[1]["Altitude"]
+      Alt = abs(Altitude1 - Altitude2)
+      if dis > SPWAN_DIST or Alt > SPWAN_ALTITUDE:
+        print("Cruise Remove----" + flight[1]["Call"] + " " + flight[1]["Type"] + " Distance " + str(dis) + " Altitude " + str(Alt))
+        sm.AIRemoveObject(flight[1]["Obj_Id"],flight[1]["Req_Id"])
+        time.sleep(2)
 
 class Arrival:
 
@@ -810,15 +838,18 @@ class Arrival:
 
     point1  = (SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"])
     Altitude1 = SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"]
-    MSFS_AI_Departure_Traffic
-    MSFS_AI_Arrival_Traffic
     for index, flight in SimConnect.MSFS_AI_Arrival_Traffic.iterrows():
+      sm.AIAircraft_GetPosition(flight[1]["Req_Id"],flight[1]["Obj_Id"])
+      time.sleep(1)
       #Check Dist
+      point2 = (flight[1]["Cur_Lat"] ,flight[1]["Cur_Log"])
+      dis = geodesic(point1, point2).km
 
-      point2 = (SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"])
-      dis =
-      if dis > SPWAN_DIST or Altitude > SPWAN_ALTITUDE:
-        sm.AIRemoveObject(Objid,Rqst)
+      Altitude2 = flight[1]["Altitude"]
+      Alt = abs(Altitude1 - Altitude2)
+      if dis > SPWAN_DIST or Alt > SPWAN_ALTITUDE:
+        print("Arrival Remove----" + flight[1]["Call"] + " " + flight[1]["Type"] + " Distance " + str(dis) + " Altitude " + str(Alt))
+        sm.AIRemoveObject(flight[1]["Obj_Id"],flight[1]["Req_Id"])
         time.sleep(2)
 
 
@@ -1108,7 +1139,23 @@ class Departure:
       except:
         print("Cannot create flight plan")
 
+  def Check_Traffic_Departure():
 
+    point1  = (SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"])
+    Altitude1 = SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"]
+    for index, flight in SimConnect.MSFS_AI_Departure_Traffic.iterrows():
+      sm.AIAircraft_GetPosition(flight[1]["Req_Id"],flight[1]["Obj_Id"])
+      time.sleep(1)
+      #Check Dist
+      point2 = (flight[1]["Cur_Lat"] ,flight[1]["Cur_Log"])
+      dis = geodesic(point1, point2).km
+
+      Altitude2 = flight[1]["Altitude"]
+      Alt = abs(Altitude1 - Altitude2)
+      if dis > SPWAN_DIST or Alt > SPWAN_ALTITUDE:
+        print("Departure Remove----" + flight[1]["Call"] + " " + flight[1]["Type"] + " Distance " + str(dis) + " Altitude " + str(Alt))
+        sm.AIRemoveObject(flight[1]["Obj_Id"],flight[1]["Req_Id"])
+        time.sleep(2)
 
 Common.Run()
 
