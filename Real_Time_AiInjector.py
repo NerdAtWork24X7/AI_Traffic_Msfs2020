@@ -36,7 +36,7 @@ CRUISE_ALTITUDE = 10000
 SRC_GROUND_RANGE = 50
 DES_GROUND_RANGE = 100
 GROUND_INJECTION_TIME = 2
-CRUISE_INJECTION_TIME = 10
+CRUISE_INJECTION_TIME = 5
 MAX_CRUISE_AI_FLIGHTS = 20
 
 SPWAN_DIST = 200
@@ -55,6 +55,7 @@ class Common:
   chrome_options.add_argument("--disable-dev-shm-usage")  # Disable /dev/shm usage (optional)
   chrome_options.add_argument('--disable-gpu')
   chrome_options.add_argument('--enable-unsafe-swiftshader')
+  chrome_options.add_argument('log-level=3')
    
   engine_fldatabase = create_engine('sqlite:///little_navmap_msfs.sqlite')
 
@@ -130,7 +131,7 @@ class Common:
       point2 = (waypoint["laty"], waypoint["lonx"])
       Cur_Dis = geodesic(point_src, point2).km
       Des_Dis = geodesic(point_des, point2).km
-      if Cur_Dis < pre_dis and Des_Dis < max_dis and Des_Dis > 25:
+      if Cur_Dis < pre_dis and Des_Dis < max_dis and Des_Dis > 50:
         df_close_waypoint = waypoint
         pre_dis = Cur_Dis
   
@@ -736,17 +737,17 @@ class Arrival:
     des_name = des_df.iloc[-1]["name"] 
     des_Pos =  Common.format_coordinates(float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),float(des_df.iloc[-1]["altitude"]))
     
-    max_dist = 70
+    max_dist = 100
     df_close_waypoint = Common.get_close_waypoint(float(src_df.iloc[-1]["laty"]),float(src_df.iloc[-1]["lonx"]),des,float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),max_dist)
   
     src_waypoint_Pos = Common.format_coordinates(float(df_close_waypoint["laty"]),float(df_close_waypoint["lonx"]),7000)
     src_waypoint_id = df_close_waypoint["ident"]
     src_waypoint_reg = df_close_waypoint["region"]
     
-    if Arrival.Arrival_Index < 10:
-        crusing_alt = str(4000 + (500 * Arrival.Arrival_Index))
-    else :
-       crusing_alt = str(7000)
+    #if Arrival.Arrival_Index < 10:
+    #    crusing_alt = str(4000 + (500 * Arrival.Arrival_Index))
+    #else :
+    crusing_alt = str(7000)
     
 
     #fill lat and log
@@ -1169,7 +1170,7 @@ class Departure:
         SimConnect.MSFS_AI_Departure_Traffic = SimConnect.MSFS_AI_Departure_Traffic[SimConnect.MSFS_AI_Departure_Traffic['Obj_Id'] != flight["Obj_Id"]]
 
     SimConnect.MSFS_AI_Departure_Traffic = SimConnect.MSFS_AI_Departure_Traffic.reset_index(drop=True)
-    print(SimConnect.MSFS_AI_Departure_Traffic)     
+    #print(SimConnect.MSFS_AI_Departure_Traffic)     
 
   def Assign_Flt_plan():
     global current_dir
@@ -1260,7 +1261,7 @@ Common.Run()
 
 
 #Arrival.Get_STAR("VABB","27")
-#Arrival.Create_flight_plan_arr("VOBL","VABB")
+#Arrival.Create_flight_plan_arr("OERK","VHHH","07R")
 
 #Cruise.Get_Cruise_Traffic(50.0333061218262,8.57046508789063,25)
 #Cruise.Inject_Cruise_Traffic()
