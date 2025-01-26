@@ -57,6 +57,19 @@ class SimConnect:
 			LOGGER.info("SIM Unpaused")
 			self.paused = False
 
+	
+	def handle_Remove_Exception(self,dwRequestID):
+
+		
+		if dwRequestID in self.MSFS_AI_Arrival_Traffic["Req_Id"].values:
+			self.MSFS_AI_Arrival_Traffic = self.MSFS_AI_Arrival_Traffic[self.MSFS_AI_Arrival_Traffic['Req_Id'] != dwRequestID]
+			print(self.MSFS_AI_Arrival_Traffic["Call"] + "  Removed")
+
+		if dwRequestID in self.MSFS_AI_Departure_Traffic["Req_Id"].values:
+			self.MSFS_AI_Departure_Traffic = self.MSFS_AI_Departure_Traffic[self.MSFS_AI_Departure_Traffic['Req_Id'] != dwRequestID]
+			print(self.MSFS_AI_Departure_Traffic["Call"] + "  Removed")
+	
+	
 	def handle_addremove_simobject_event(self,pData):
 		req_id = pData.dwRequestID
 		obj_id = pData.dwObjectID
@@ -69,7 +82,7 @@ class SimConnect:
 			else:
 				#Request to Remove 
 				self.MSFS_AI_Arrival_Traffic = self.MSFS_AI_Arrival_Traffic[self.MSFS_AI_Arrival_Traffic['Req_Id'] != req_id]
-				#print(self.MSFS_AI_Arrival_Traffic["Call"] + "  Removed")
+				print(self.MSFS_AI_Arrival_Traffic["Call"] + "  Removed")
 
 		
 		if req_id in self.MSFS_AI_Departure_Traffic["Req_Id"].values:
@@ -79,7 +92,7 @@ class SimConnect:
 			else:
 				#Request to Add 
 				self.MSFS_AI_Departure_Traffic = self.MSFS_AI_Departure_Traffic[self.MSFS_AI_Departure_Traffic['Req_Id'] != req_id]
-				#print(self.MSFS_AI_Departure_Traffic["Call"] + "  Removed")
+				print(self.MSFS_AI_Departure_Traffic["Call"] + "  Removed")
 
 
 
@@ -145,7 +158,7 @@ class SimConnect:
 			if _request.LastID == _unsendid:
 				LOGGER.warn("%s: in %s" % (_exception, _request.definitions[0]))
 				return
-
+			self.handle_Remove_Exception(_request.LastID)
 		LOGGER.warn(_exception)
 
 	def handle_state_event(self, pData):
@@ -234,7 +247,7 @@ class SimConnect:
 	def connect(self):
 		try:
 			err = self.dll.Open(
-				byref(self.hSimConnect), LPCSTR(b"Request Data"), None, 0, 0, 0
+				byref(self.hSimConnect), LPCSTR(b"AI_Injector"), None, 0, 0, 0
 			)
 			if self.IsHR(err, 0):
 				LOGGER.debug("Connected to Flight Simulator!")
