@@ -1,0 +1,8 @@
+pandas
+geopy
+sqlalchemy
+requests
+selenium
+timezonefinder
+pytz
+tzlocal
