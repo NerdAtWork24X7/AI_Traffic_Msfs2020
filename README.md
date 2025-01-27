@@ -1,39 +1,69 @@
-# AI_Traffic_Msfs2020
-Real time Ai traffic from Flight Radar 24
+#  Real-Time AI Injector for MSFS2020
 
-Read Flights from Flight Radar 24 and injects it in MSFS2020
+## Description
+This project reads real-time flight data from Flight Radar 24 and injects it into Microsoft Flight Simulator 2020 (MSFS2020).
+
+## Features
+- Real-time AI traffic injection based on Flight Radar 24 data
+- Customizable parameters for traffic injection
+- Integration with AIFlow and AIGround for managing AI landings and departures
+- Inject Traffic based on location of user (Departure, Cruise, Destination)
+
+## Prerequisites
+- Python 3.x
+- Required Python packages: pip3 install -r requirements.txt
+- FSLT base package
+- ADB-s api for tracking live flight at cruise https://rapidapi.com/adsbx/api/adsbexchange-com1
+
+## Installation
+- git clone https://github.com/NerdAtWork24X7/AI_Traffic_Msfs2020.git
+- Link for modified little_navmap_msfs.sqlite -- https://drive.google.com/file/d/1LRD1JWVqBQ1_btgYX5jagCKUEGadeKts/view?usp=sharing
+- Create config.py
+
+##Config
+ - Create config.py file and add api keys from ADB-S account
+   - config = {"key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","host" : "adsbx-flight-sim-traffic.p.rapidapi.com"}
 
 
-Modify this Parameters to inject traffic at airport
-1) SRC_AIRPORT_IATA = "BOM"
-2) SRC_AIRPORT_IACO = "VABB"
-3) ACTIVE_RUNWAY = "27"
-4) MAX_ARRIVAL = 40
-5) MAX_DEPARTURE = 40
-6) INJECTION_TIME = 2 //Default 2 mins
+## Modify this Parameters to inject traffic at airport
+    # Mandatory parameter before start
+      - SRC_AIRPORT_IACO = "VABB"
+      - DES_AIRPORT_IACO = "EDDF"
+      - SRC_ACTIVE_RUNWAY = "27"
+      - S_ACTIVE_RUNWAY = "25R"
+
+    # Optional Parameter you can tweak it or keep it as they are
+      - MAX_ARRIVAL = 20
+      - MAX_DEPARTURE = 20
+      - MAX_CRUISE_AI_FLIGHTS = 20
+      - CRUISE_ALTITUDE = 10000
+      - SRC_GROUND_RANGE = 50
+      - DES_GROUND_RANGE = 100
+      - GROUND_INJECTION_TIME = 2
+      - CRUISE_INJECTION_TIME = 5
+      - SPWAN_DIST = 200
+      - SPWAN_ALTITUDE = 10000
 
 
-Script inject Traffic every 3 mins but this can modified . Ideal is 1 min. < 1 min can create Traffic congestion
 
-
-Link for little_navmap_msfs.sqlite -- https://drive.google.com/file/d/1hyI_WuTPm7Hwv2sD9qQ14Ij9zBXahC0L/view?usp=sharing
-
-Running Script :
+## Running Script :
   python3 Real_Time_AiInjector.py
 
 
-Any contribution are welcome.
-
+## Acknowledgements
 Thanks to
  - LittleNavMap database
  - FSLT base package
- - SimConnect
+ - SimConnectPython
 
 
-Note:
-  1) Make sure you are at destination airport before you start.
-  2) Use it with AIFlow and AIGround to Force Landing and Departures from specific RW
-  3) Use data from Flight Radar 24 . so donot request too much data else connection to Flight Radar 24 will be refused.
-  4) Not liable for any license issues Use at your own risk
+## Note:
+- Ensure you are at the destination airport before starting the script.
+- Use the script with AIFlow and AIGround to manage AI landings and departures from specific runways.
+- Use data from Flight Radar 24 responsibly to avoid connection issues.
+- This project is for educational purposes.
+
+## Contributions
+Contributions are welcome. Feel free to open issues or submit pull requests.
 
 I am just learning OPPS programming in python so created this fun project.
