@@ -363,7 +363,7 @@ class Cruise:
                         
             Cruise.Cruise_Traffic_ADB.loc[last_element] = [Call,Type,Src_ICAO,Des_ICAO,Lat,Lon,Altitude,Heading,Speed]
     except:
-      print(str(flight) + "Flight not found")
+      print("Cruise Flight not found")
           
     print(Cruise.Cruise_Traffic_ADB)
       
