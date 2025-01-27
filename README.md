@@ -14,6 +14,7 @@ This project reads real-time flight data from Flight Radar 24 and injects it int
 - Required Python packages: pip3 install -r requirements.txt
 - FSLT base package
 - ADB-s api for tracking live flight at cruise https://rapidapi.com/adsbx/api/adsbx-flight-sim-traffic/pricing
+- Make sure departure and destination airport has medium and large gate else Ai traffic will not be swapened if msfs is not able to detect the gates
 
 ## Installation
 - git clone https://github.com/NerdAtWork24X7/AI_Traffic_Msfs2020.git
