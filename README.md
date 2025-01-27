@@ -58,7 +58,7 @@ Thanks to
 
 
 ## Note:
-- Ensure you are at the destination airport before starting the script.
+- Ensure you are at the departure airport before starting the script.
 - Use the script with AIFlow and AIGround to manage AI landings and departures from specific runways.
 - Use data from Flight Radar 24 responsibly to avoid connection issues.
 - This project is for educational purposes.
