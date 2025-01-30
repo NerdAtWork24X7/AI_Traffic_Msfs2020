@@ -68,6 +68,10 @@ class SimConnect:
 		if dwRequestID in self.MSFS_AI_Departure_Traffic["Req_Id"].values:
 			self.MSFS_AI_Departure_Traffic = self.MSFS_AI_Departure_Traffic[self.MSFS_AI_Departure_Traffic['Req_Id'] != dwRequestID]
 			print(self.MSFS_AI_Departure_Traffic["Call"] + "  Removed")
+
+		if dwRequestID in self.MSFS_Cruise_Traffic["Req_Id"].values:
+			self.MSFS_Cruise_Traffic = self.MSFS_Cruise_Traffic[self.MSFS_Cruise_Traffic['Req_Id'] != dwRequestID]
+			print(self.MSFS_Cruise_Traffic["Call"] + "  Removed")
 	
 	
 	def handle_addremove_simobject_event(self,pData):
@@ -90,30 +94,26 @@ class SimConnect:
 				self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Req_Id"] == req_id, "Obj_Id"] = obj_id
 				#print(self.MSFS_AI_Departure_Traffic.iloc[-1]["Call"] + "  Added")
 			else:
-				#Request to Add 
+				#Request to Remove 
 				self.MSFS_AI_Departure_Traffic = self.MSFS_AI_Departure_Traffic[self.MSFS_AI_Departure_Traffic['Req_Id'] != req_id]
 				print(self.MSFS_AI_Departure_Traffic["Call"] + "  Removed")
 
+		if req_id in self.MSFS_Cruise_Traffic["Req_Id"].values:
+			if self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Req_Id"] == req_id, "Obj_Id"].values[0] == 0:
+				self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Req_Id"] == req_id, "Obj_Id"] = obj_id
+				#print(self.MSFS_Cruise_Traffic.iloc[-1]["Call"] + "  Added")
+			else:
+				#Request to Remove 
+				self.MSFS_Cruise_Traffic = self.MSFS_Cruise_Traffic[self.MSFS_Cruise_Traffic['Req_Id'] != req_id]
+				print(self.MSFS_Cruise_Traffic["Call"] + "  Removed")
 
-
-	    #if pData.dwRequestID == 0:
-	    #	#print("AI object added: ObjectID=" + str(pData.dwObjectID))
-	    #	self.air_1_obj = pData.dwObjectID
-	    #if pData.dwRequestID == 1:
-	    #	#print("AI object added: ObjectID=" + str(pData.dwObjectID))
-	    #	self.air_2_obj = pData.dwObjectID
 
 
 	def handle_ai_aircraft(self,pObjData):
 		req_id = pObjData.dwRequestID
 		obj_id = pObjData.dwObjectID
         
-		if obj_id in self.MSFS_AI_Arrival_Traffic["Obj_Id"].values:
-			#Prv_Lat = self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Cur_Lat"].values[0]
-			#Prv_Log  = self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Cur_Log"].values[0]
-			#self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Prv_Lat"] = Prv_Lat
-			#self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Prv_Log"] = Prv_Log
-			
+		if obj_id in self.MSFS_AI_Arrival_Traffic["Obj_Id"].values:		
 			addressof_dwData = ctypes.addressof(pObjData.dwData)
 			pointer = ctypes.cast(addressof_dwData, ctypes.POINTER(ctypes.c_double))
 			altitude = float(pointer[0])
@@ -134,6 +134,17 @@ class SimConnect:
 			self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Obj_Id"] == obj_id, "Cur_Log"] = longitude
 			self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Obj_Id"] == obj_id, "Altitude"] = altitude
 
+		if obj_id in self.MSFS_Cruise_Traffic["Obj_Id"].values:
+			addressof_dwData = ctypes.addressof(pObjData.dwData)
+			pointer = ctypes.cast(addressof_dwData, ctypes.POINTER(ctypes.c_double))
+			altitude = float(pointer[0])
+			Latitude = float(pointer[1])
+			longitude = float(pointer[2])
+			self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Obj_Id"] == obj_id, "Cur_Lat"] = Latitude
+			self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Obj_Id"] == obj_id, "Cur_Log"] = longitude
+			self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Obj_Id"] == obj_id, "Altitude"] = altitude		
+		
+		
 		if obj_id == 1:
 			addressof_dwData = ctypes.addressof(pObjData.dwData)
 			pointer = ctypes.cast(addressof_dwData, ctypes.POINTER(ctypes.c_double))
