@@ -59,20 +59,7 @@ class SimConnect:
 
 	
 	def handle_Remove_Exception(self,dwRequestID):
-
-		
-		if dwRequestID in self.MSFS_AI_Arrival_Traffic["Req_Id"].values:
-			self.MSFS_AI_Arrival_Traffic = self.MSFS_AI_Arrival_Traffic[self.MSFS_AI_Arrival_Traffic['Req_Id'] != dwRequestID]
-			print(self.MSFS_AI_Arrival_Traffic["Call"] + "  Removed")
-
-		if dwRequestID in self.MSFS_AI_Departure_Traffic["Req_Id"].values:
-			self.MSFS_AI_Departure_Traffic = self.MSFS_AI_Departure_Traffic[self.MSFS_AI_Departure_Traffic['Req_Id'] != dwRequestID]
-			print(self.MSFS_AI_Departure_Traffic["Call"] + "  Removed")
-
-		if dwRequestID in self.MSFS_Cruise_Traffic["Req_Id"].values:
-			self.MSFS_Cruise_Traffic = self.MSFS_Cruise_Traffic[self.MSFS_Cruise_Traffic['Req_Id'] != dwRequestID]
-			print(self.MSFS_Cruise_Traffic["Call"] + "  Removed")
-	
+		pass
 	
 	def handle_addremove_simobject_event(self,pData):
 		req_id = pData.dwRequestID
@@ -83,29 +70,17 @@ class SimConnect:
 			if self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Req_Id"] == req_id, "Obj_Id"].values[0] == 0:
 				self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Req_Id"] == req_id, "Obj_Id"] = obj_id
 				#print(self.MSFS_AI_Arrival_Traffic.iloc[-1]["Call"] + "  Added")
-			else:
-				#Request to Remove 
-				self.MSFS_AI_Arrival_Traffic = self.MSFS_AI_Arrival_Traffic[self.MSFS_AI_Arrival_Traffic['Req_Id'] != req_id]
-				print(self.MSFS_AI_Arrival_Traffic["Call"] + "  Removed")
-
 		
 		if req_id in self.MSFS_AI_Departure_Traffic["Req_Id"].values:
 			if self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Req_Id"] == req_id, "Obj_Id"].values[0] == 0:
 				self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Req_Id"] == req_id, "Obj_Id"] = obj_id
 				#print(self.MSFS_AI_Departure_Traffic.iloc[-1]["Call"] + "  Added")
-			else:
-				#Request to Remove 
-				self.MSFS_AI_Departure_Traffic = self.MSFS_AI_Departure_Traffic[self.MSFS_AI_Departure_Traffic['Req_Id'] != req_id]
-				print(self.MSFS_AI_Departure_Traffic["Call"] + "  Removed")
+
 
 		if req_id in self.MSFS_Cruise_Traffic["Req_Id"].values:
 			if self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Req_Id"] == req_id, "Obj_Id"].values[0] == 0:
 				self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Req_Id"] == req_id, "Obj_Id"] = obj_id
 				#print(self.MSFS_Cruise_Traffic.iloc[-1]["Call"] + "  Added")
-			else:
-				#Request to Remove 
-				self.MSFS_Cruise_Traffic = self.MSFS_Cruise_Traffic[self.MSFS_Cruise_Traffic['Req_Id'] != req_id]
-				print(self.MSFS_Cruise_Traffic["Call"] + "  Removed")
 
 
 
