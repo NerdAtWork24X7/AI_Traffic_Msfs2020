@@ -142,10 +142,10 @@ class SimConnect:
 		for _reqin in self.Requests:
 			_request = self.Requests[_reqin]
 			if _request.LastID == _unsendid:
-				LOGGER.warn("%s: in %s" % (_exception, _request.definitions[0]))
+				#LOGGER.warn("%s: in %s" % (_exception, _request.definitions[0]))
 				return
 			self.handle_Remove_Exception(_request.LastID)
-		LOGGER.warn(_exception)
+		#LOGGER.warn(_exception)
 
 	def handle_state_event(self, pData):
 		print("I:", pData.dwInteger, "F:", pData.fFloat, "S:", pData.szString)

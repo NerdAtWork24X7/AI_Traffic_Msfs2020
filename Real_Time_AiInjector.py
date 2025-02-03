@@ -32,6 +32,7 @@ SRC_AIRPORT_IACO = ""
 DES_AIRPORT_IACO = ""
 SRC_ACTIVE_RUNWAY = ""
 DES_ACTIVE_RUNWAY = ""
+USE_FSTRAFFIC_LIVERY = True
 
 
 MAX_ARRIVAL = 20
@@ -172,8 +173,6 @@ class Common:
     
     livery_found = False
     try: 
-      tree = ET.parse('FSLTL_Rules.vmr')
-      root = tree.getroot()
       IATA_call = callsign[:2]
       engine_airline_icao = create_engine('sqlite:///airline_icao.sqlite')
       with engine_airline_icao.connect() as conn:
@@ -181,22 +180,48 @@ class Common:
         src_df = pd.read_sql(sql=qry_str, con=conn.connection)
         icao = src_df.iloc[0]["icao"]
 
+
+      tree = ET.parse('FSLTL_Rules.vmr')
+      root_Fsltl = tree.getroot()
       # Iterate over all ModelMatchRule elements
-      for model_match_rule in root.findall('ModelMatchRule'):
+      for model_match_rule in root_Fsltl.findall('ModelMatchRule'):
         # Check if the TypeCode matches
         if typecode == model_match_rule.get('TypeCode') and icao == model_match_rule.get('CallsignPrefix'):
             model_name_cur = (model_match_rule.get('ModelName')).split("//")
             Common.Prev_Callsign = icao
             livery_found = True
             break
-        
+
+      if livery_found == False and USE_FSTRAFFIC_LIVERY == True:  
+        tree = ET.parse('FSTraffic.vmr')
+        root_FSTraffic = tree.getroot()
+        for model_match_rule in root_FSTraffic.findall('ModelMatchRule'):
+          # Check if the TypeCode matches
+          if typecode == model_match_rule.get('TypeCode') and icao == model_match_rule.get('CallsignPrefix'):
+              model_name_cur = (model_match_rule.get('ModelName')).split("//")
+              Common.Prev_Callsign = icao
+              livery_found = True
+              break
+      
+      
+      
       if livery_found == False:
         # Iterate over all ModelMatchRule elements
-        for model_match_rule in root.findall('ModelMatchRule'):
+        for model_match_rule in root_Fsltl.findall('ModelMatchRule'):
           # Check if the TypeCode matches
           if typecode == model_match_rule.get('TypeCode') and Common.Prev_Callsign == model_match_rule.get('CallsignPrefix'):
               model_name_cur = (model_match_rule.get('ModelName')).split("//")
-              break  
+              livery_found = True
+              break
+          
+      if livery_found == False and USE_FSTRAFFIC_LIVERY == True:
+        # Iterate over all ModelMatchRule elements
+        for model_match_rule in root_FSTraffic.findall('ModelMatchRule'):
+          # Check if the TypeCode matches
+          if typecode == model_match_rule.get('TypeCode') and Common.Prev_Callsign == model_match_rule.get('CallsignPrefix'):
+              model_name_cur = (model_match_rule.get('ModelName')).split("//")
+              livery_found = True
+              break   
 
       model_name = model_name_cur[0]
     except:
@@ -348,6 +373,9 @@ class Common:
           
           if (min % CRUISE_INJECTION_TIME == 0) or Common.Shift_Src_Cruise == False:
             Cruise.Get_Cruise_Traffic(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],25)
+            if Common.Shift_Src_Cruise == False:
+              Cruise.Inject_Cruise_Traffic()
+              Cruise.Cruise_Index += 1
             Common.Shift_Src_Cruise = True
 
           if min % 2 == 0:
@@ -466,7 +494,7 @@ class Cruise:
                         
             Cruise.Cruise_Traffic_ADB.loc[last_element] = [Call,Type,Src_ICAO,Des_ICAO,Lat,Lon,Altitude,Heading,Speed]
     except:
-      print("Cruise Flight not found")
+      print("Cruise ADB-S Flight not found")
           
     #if len(Cruise.Cruise_Traffic_ADB) > 0:
     #  print(Cruise.Cruise_Traffic_ADB)
@@ -522,7 +550,8 @@ class Cruise:
           Req_Id = Common.Global_req_id
           SimConnect.MSFS_Cruise_Traffic.loc[last_element] = [Call,Type,Src,Des,Cur_Lat,Cur_Log,Altitude,Heading,Speed,Flt_plan,Req_Id,Obj_Id]
           Livery_name = Common.Get_flight_match(Call,Type)
-          flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat), float(Cur_Log) ,Speed,30000)
+          Altitude_offset = random.choice([-1000,-2000,-3000,-4000,-5000,1000,2000,3000])
+          flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat), float(Cur_Log) ,Speed,float(int(Altitude) + int(Altitude_offset)))
           print("Crusing----" + Call + " " + Type + " " + str(Livery_name))
           result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
           Common.Global_req_id+=1
@@ -548,8 +577,9 @@ class Cruise:
     des_Pos =  Common.format_coordinates(float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),float(des_df.iloc[-1]["altitude"]))
     
     with Common.engine_fldatabase.connect() as conn:
-      qry_str = '''SELECT"_rowid_",* FROM "main"."waypoint" WHERE "laty" > '''  + str(float(Lat)-1) + ''' AND "laty" < '''  + str(float(Lat) + 1) + ''' AND "lonx" > '''  + str(float(Lon)-1) + '''  AND "lonx" < '''  + str(float(Lon) + 1) + ''' '''
+      qry_str = '''SELECT"_rowid_",* FROM "main"."waypoint" WHERE "laty" > '''  + str(int(Lat)-3) + ''' AND "laty" < '''  + str(int(Lat) + 3) + ''' AND "lonx" > '''  + str(int(Lon)-3) + '''  AND "lonx" < '''  + str(int(Lon) + 3) + ''' '''
       way_df = pd.read_sql(sql=qry_str, con=conn.connection)
+
 
     point1 = (Lat,Lon)
     df_nearest_waypoint = pd.DataFrame()
@@ -557,7 +587,7 @@ class Cruise:
     for waypoint in way_df.iterrows():
         point2 = (float(waypoint[1]["laty"]),float(waypoint[1]["lonx"]))
         Dis = geodesic(point1, point2).km
-        if Dis > 5 and Dis < 100:
+        if Dis > 2 and Dis < 100:
           df_nearest_waypoint_list.append(waypoint)
     
     df_nearest_waypoint = random.choice(df_nearest_waypoint_list) 
