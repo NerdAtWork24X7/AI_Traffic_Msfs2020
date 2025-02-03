@@ -25,11 +25,13 @@ import config
 warnings.filterwarnings('ignore')
 
 
+flt_plan = "IFR Frankfurt Main (EDDF) to Munich Airport (EDDM).pln"
 
-SRC_AIRPORT_IACO = "WSSS"
-DES_AIRPORT_IACO = "YPPH"
-SRC_ACTIVE_RUNWAY = "02L"
-DES_ACTIVE_RUNWAY = "21"
+
+SRC_AIRPORT_IACO = ""
+DES_AIRPORT_IACO = ""
+SRC_ACTIVE_RUNWAY = ""
+DES_ACTIVE_RUNWAY = ""
 
 
 MAX_ARRIVAL = 20
@@ -73,6 +75,55 @@ class Common:
   Shift_Src_Cruise = False
   Shift_Cruise_Des = False
   
+
+  def Get_Flight_plan(path):
+    global SRC_AIRPORT_IACO,DES_AIRPORT_IACO,SRC_ACTIVE_RUNWAY,DES_ACTIVE_RUNWAY
+
+    root = ET.parse(path).getroot()
+
+    # Access flight plan details
+    flight_plan = root.find(".//FlightPlan.FlightPlan")
+    title = flight_plan.find('Title').text
+    departure_id = flight_plan.find('DepartureID').text
+    destination_id = flight_plan.find('DestinationID').text
+
+    SRC_AIRPORT_IACO = departure_id
+    DES_AIRPORT_IACO = destination_id
+   
+    
+    waypoints = flight_plan.findall('.//ATCWaypoint')
+    for waypoint in waypoints:
+      wp_type = waypoint.find('ATCWaypointType').text
+      RunwayNumberFP = ""
+      RunwayDesignatorFP = ""
+      if waypoint.find('RunwayDesignatorFP') != None:  
+        RunwayDesignatorFP = waypoint.find('RunwayDesignatorFP').text
+      
+      
+      if waypoint.find('RunwayNumberFP') != None:
+        RunwayNumberFP = waypoint.find('RunwayNumberFP').text
+        if waypoint.find('DepartureFP') != None:
+          DepartureFP = waypoint.find('DepartureFP').text
+          SRC_ACTIVE_RUNWAY = RunwayNumberFP + RunwayDesignatorFP[0]
+        
+      if wp_type == "Airport":
+        if waypoint.find('RunwayNumberFP') != None:
+          DES_ACTIVE_RUNWAY = RunwayNumberFP + RunwayDesignatorFP[0]
+        if waypoint.find('ApproachTypeFP') != None:
+          ApproachTypeFP = waypoint.find('ApproachTypeFP').text
+      
+        
+
+    print(f"Departure: {SRC_AIRPORT_IACO}")
+    print(f"Destination: {DES_AIRPORT_IACO}")
+    print(f"Active Runway at Departure: {SRC_ACTIVE_RUNWAY}")
+    print(f"Active Runway at Destination: {DES_ACTIVE_RUNWAY}")
+
+    if SRC_ACTIVE_RUNWAY == "" or DES_ACTIVE_RUNWAY == "" or SRC_AIRPORT_IACO == "" or DES_AIRPORT_IACO == "":
+      print("ERROR:: Error in Flight plan")
+      exit(1)
+   
+     
   def Get_Timezone(src,specific_time_str):
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+src+"""%'"""
     with Common.engine_fldatabase.connect() as conn:
@@ -204,6 +255,8 @@ class Common:
 
   def Run():
         
+    Common.Get_Flight_plan(flt_plan)
+
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+SRC_AIRPORT_IACO+"""%'"""
     with Common.engine_fldatabase.connect() as conn:
       src_df = pd.read_sql(sql=qry_str, con=conn.connection) 
@@ -1322,66 +1375,3 @@ class Departure:
 
 
 Common.Run()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#For Testing
-#Arrival.Get_Arrival("EDDF")
-#Departure.Get_Departure("EDDF")
-
-
-#for index, row in Arrival.FR24_Arrival_Traffic.iterrows():
-#  Arrival.inject_Traffic_Arrival("25R")
-#  Arrival.Arrival_Index += 1
-#  time.sleep(1)
-
-
-#Arrival.Get_STAR("VABB","27")
-#Arrival.Create_flight_plan_arr("OERK","VHHH","07R")
-
-#Cruise.Get_Cruise_Traffic(50.0333061218262,8.57046508789063,25)
-#Cruise.Inject_Cruise_Traffic()
-#Cruise.Assign_Flt_Plan()
-
-#Arrival.getdat()
-#SimConnect.MSFS_User_Aircraft.loc[0] = [50.0333061218262,8.57046508789063,20000,0, 0,0,0]
-#SimConnect.MSFS_User_Aircraft.loc[0] = [20.091552734375,72.865966796875,20000,0, 0,0,0]
-#Common.Run()
-
-#flight = pd.DataFrame(columns=["Call","Type","Src","Des","Cur_Lat","Cur_Log","Altitude","Heading","Speed","Flt_plan","Req_Id","Obj_Id"])
-#flight.loc[1] = ("DLH32","Type","EDDF","VABB",20.31552734375,72.565966796875,20000,0,320,1,0,0)
-#print(flight)
-#Cruise.Create_flt_Plan(flight)
-
-#Departure.Get_SID("RCKH","09")
-#Departure.Create_flight_plan_Dep("RCKH","VHHX")
