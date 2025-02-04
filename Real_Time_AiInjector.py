@@ -32,9 +32,8 @@ SRC_AIRPORT_IACO = ""
 DES_AIRPORT_IACO = ""
 SRC_ACTIVE_RUNWAY = ""
 DES_ACTIVE_RUNWAY = ""
+
 USE_FSTRAFFIC_LIVERY = True
-
-
 MAX_ARRIVAL_AI_FLIGHTS = 20
 MAX_DEPARTURE_AI_FLIGHTS = 20
 MAX_CRUISE_AI_FLIGHTS = 50
@@ -75,6 +74,8 @@ class Common:
 
   Shift_Src_Cruise = False
   Shift_Cruise_Des = False
+
+  Skip_injection = 1 # For Flight spacing
   
 
   def Get_Flight_plan():
@@ -295,7 +296,7 @@ class Common:
       if prev_min != min:
       
         Common.Get_User_Aircraft()
-        
+               
         # if User aircraft within 50KM of Departure airport
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SRC_GROUND_RANGE:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
@@ -313,18 +314,21 @@ class Common:
             Common.Retry_SRC += 1             #Retry only once if Flight Radar data is available
             
           else:
-            if min % GROUND_INJECTION_TIME == 0:  
+            if min % GROUND_INJECTION_TIME == 0 :   
               if Departure.Departure_Index < Fr24_Dep_len:
-                Departure.Assign_Flt_plan()
-                Departure.Departure_Index += 1
+                if Common.Skip_injection % 4 != 0:
+                  Departure.Assign_Flt_plan()
+                  Departure.Departure_Index += 1
               else:
                 print("Departure injection Completed at Departure airport")
     
               if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic) :
-                Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
-                Arrival.Arrival_Index += 1
+                if Common.Skip_injection % 4 != 0:
+                  Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
+                  Arrival.Arrival_Index += 1
               else:
                 print("Arrival injection Completed at Departure airport")
+              Common.Skip_injection += 1 
 
         # if User aircraft within 100KM of Arrival airport  
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < DES_GROUND_RANGE:
@@ -354,16 +358,19 @@ class Common:
           else:
             if min % GROUND_INJECTION_TIME == 0:
               if Departure.Departure_Index < Fr24_Dep_len:
-                Departure.Assign_Flt_plan()
-                Departure.Departure_Index += 1
+                if Common.Skip_injection % 4 != 0:
+                  Departure.Assign_Flt_plan()
+                  Departure.Departure_Index += 1
               else:
                 print("Departure injection Completed at destination airport")
     
               if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic) :
-                Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
-                Arrival.Arrival_Index += 1
+                if Common.Skip_injection % 4 != 0:
+                  Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
+                  Arrival.Arrival_Index += 1
               else:
                 print("Arrival injection Completed at destination airport")  
+              Common.Skip_injection += 1
             
         # if User aircraft is Crusing
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"] > CRUISE_ALTITUDE and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] > DES_GROUND_RANGE:   
@@ -382,7 +389,7 @@ class Common:
               Cruise.Inject_Cruise_Traffic_ADB_S()
             Common.Shift_Src_Cruise = True
 
-          if min % 2 == 0:
+          if min % 2 == 0 :
             Cruise.Inject_Cruise_Traffic_Arrival_des()
             Cruise.Inject_Cruise_Traffic_Arrival_src()
             Cruise.Cruise_Arr_des_Index += 1
