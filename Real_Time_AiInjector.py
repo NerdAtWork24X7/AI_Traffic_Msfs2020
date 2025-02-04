@@ -537,7 +537,7 @@ class Cruise:
           if flight["call"] in Cruise.Cruise_Traffic_ADB['Call'].values:
             continue
           last_element = len(Cruise.Cruise_Traffic_ADB)
-          if last_element < MAX_CRUISE_AI_FLIGHTS and int(flight["alt"]) > CRUISE_ALTITUDE:
+          if int(flight["alt"]) > CRUISE_ALTITUDE:
             Call = flight["call"]
             Type = flight["type"]
             Lat = flight["lat"]
@@ -632,7 +632,7 @@ class Cruise:
     global current_dir
     #add departed traffic to fill in sky
     if Cruise.Cruise_Arr_src_Index  < len(Cruise.FR24_Cruise_Arrival_src_Traffic) and len(SimConnect.MSFS_Cruise_Traffic) < MAX_CRUISE_AI_FLIGHTS :
-      Index = -Cruise.Cruise_Arr_src_Index
+      Index = Cruise.Cruise_Arr_src_Index
       if not (Cruise.FR24_Cruise_Arrival_src_Traffic.loc[Index,"Call"] in SimConnect.MSFS_Cruise_Traffic['Call'].values):
         last_element = len(SimConnect.MSFS_Cruise_Traffic)
         try:
