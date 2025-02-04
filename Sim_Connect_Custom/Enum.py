@@ -675,6 +675,12 @@ class SIMCONNECT_DATA_INITPOSITION(Structure):  #
 		("Airspeed", DWORD),  # knots
 	]
 
+# SIMCONNECT_DATATYPE_AIRSPEED
+class SIMCONNECT_DATA_AIRSPEED(Structure):  #
+	_fields_ = [
+		("Airspeed", DWORD),  # knots
+	]
+
 
 # SIMCONNECT_DATATYPE_MARKERSTATE
 class SIMCONNECT_DATA_MARKERSTATE(Structure):  #

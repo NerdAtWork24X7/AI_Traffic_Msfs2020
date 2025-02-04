@@ -35,7 +35,7 @@ class SimConnect:
 	MSFS_AI_Departure_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Req_Id","Obj_Id"])
 	MSFS_User_Aircraft =  pd.DataFrame(columns=["Cur_Lat","Cur_Log","Altitude","Dis_Src", "Dis_Des","Req_Id","Obj_Id"])
 	MSFS_Cruise_Traffic = pd.DataFrame(columns=["Call","Type","Src","Des","Cur_Lat","Cur_Log","Altitude","Heading","Speed","Flt_plan","Req_Id","Obj_Id"])
-		
+	
 	def IsHR(self, hr, value):
 		_hr = ctypes.HRESULT(hr)
 		return ctypes.c_ulong(_hr.value).value == value
@@ -64,8 +64,7 @@ class SimConnect:
 	def handle_addremove_simobject_event(self,pData):
 		req_id = pData.dwRequestID
 		obj_id = pData.dwObjectID
-		
-        
+		        
 		if req_id in self.MSFS_AI_Arrival_Traffic["Req_Id"].values:
 			if self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Req_Id"] == req_id, "Obj_Id"].values[0] == 0:
 				self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Req_Id"] == req_id, "Obj_Id"] = obj_id
@@ -88,6 +87,7 @@ class SimConnect:
 		req_id = pObjData.dwRequestID
 		obj_id = pObjData.dwObjectID
         
+
 		if obj_id in self.MSFS_AI_Arrival_Traffic["Obj_Id"].values:		
 			addressof_dwData = ctypes.addressof(pObjData.dwData)
 			pointer = ctypes.cast(addressof_dwData, ctypes.POINTER(ctypes.c_double))
@@ -225,6 +225,7 @@ class SimConnect:
 		self.paused = False
 		self.DEFINITION_POS = None
 		self.DEFINITION_WAYPOINT = None
+		self.DEFINITION_AIRSPEED = None
 		self.my_dispatch_proc_rd = self.dll.DispatchProc(self.my_dispatch_proc)
 		
 		if auto_connect:
@@ -409,4 +410,28 @@ class SimConnect:
 			0
 		)
 		return retval
+	
+	def AIAircraftAirspeed(self,object_id,airspeed):
+		
+		if self.DEFINITION_AIRSPEED is None:
+			self.DEFINITION_AIRSPEED = self.new_def_id()
+			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_AIRSPEED.value,b'AIRSPEED INDICATED',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+		
+		pyarr = list([airspeed])
+		dataarray = (ctypes.c_double * len(pyarr))(*pyarr)
 
+		pObjData = cast(
+			dataarray, c_void_p
+		)
+				
+		retval = self.dll.SetDataOnSimObject(
+		    self.hSimConnect,
+			self.DEFINITION_AIRSPEED.value,
+			object_id,
+			0,
+			0,
+			sizeof(ctypes.c_double) * len(pyarr),
+			pObjData
+		)
+		return retval
+		

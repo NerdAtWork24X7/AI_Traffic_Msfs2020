@@ -36,11 +36,13 @@ DES_ACTIVE_RUNWAY = ""
 USE_FSTRAFFIC_LIVERY = True
 MAX_ARRIVAL_AI_FLIGHTS = 20
 MAX_DEPARTURE_AI_FLIGHTS = 20
-MAX_CRUISE_AI_FLIGHTS = 50
+MAX_CRUISE_AI_FLIGHTS = 20
+MAX_PARKED_AI_FLIGHTS = 40
 CRUISE_ALTITUDE = 10000
 SRC_GROUND_RANGE = 50
 DES_GROUND_RANGE = 100
-GROUND_INJECTION_TIME = 2
+GROUND_INJECTION_TIME_ARR = 3
+GROUND_INJECTION_TIME_DEP = 2
 CRUISE_INJECTION_TIME = 5
 SPWAN_DIST = 200
 SPWAN_ALTITUDE = 20000
@@ -314,14 +316,14 @@ class Common:
             Common.Retry_SRC += 1             #Retry only once if Flight Radar data is available
             
           else:
-            if min % GROUND_INJECTION_TIME == 0 :   
+            if min % GROUND_INJECTION_TIME_DEP == 0 and Departure.Departure_Index < MAX_DEPARTURE_AI_FLIGHTS:   
               if Departure.Departure_Index < Fr24_Dep_len:
-                if Common.Skip_injection % 4 != 0:
                   Departure.Assign_Flt_plan()
                   Departure.Departure_Index += 1
               else:
                 print("Departure injection Completed at Departure airport")
-    
+
+            if min % GROUND_INJECTION_TIME_ARR == 0 and len(SimConnect.MSFS_AI_Arrival_Traffic) < MAX_ARRIVAL_AI_FLIGHTS:
               if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic) :
                 if Common.Skip_injection % 4 != 0:
                   Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
@@ -356,14 +358,14 @@ class Common:
             Common.Retry_DES += 1             #Retry only once if Flight Radar data is available
           
           else:
-            if min % GROUND_INJECTION_TIME == 0:
+            if min % GROUND_INJECTION_TIME_DEP == 0 and Departure.Departure_Index < MAX_DEPARTURE_AI_FLIGHTS:
               if Departure.Departure_Index < Fr24_Dep_len:
-                if Common.Skip_injection % 4 != 0:
                   Departure.Assign_Flt_plan()
                   Departure.Departure_Index += 1
               else:
                 print("Departure injection Completed at destination airport")
-    
+
+            if min % GROUND_INJECTION_TIME_ARR == 0 and len(SimConnect.MSFS_AI_Arrival_Traffic) < MAX_ARRIVAL_AI_FLIGHTS:
               if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic) :
                 if Common.Skip_injection % 4 != 0:
                   Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
@@ -384,16 +386,18 @@ class Common:
             Cruise.Cruise_Arr_src_Index += 1
           
           if (min % CRUISE_INJECTION_TIME == 0) or Common.Shift_Src_Cruise == False:
-            Cruise.Get_Cruise_Traffic(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],25)
+            Cruise.Get_Cruise_Traffic_ADS_S(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],25)
             if Common.Shift_Src_Cruise == False:
               Cruise.Inject_Cruise_Traffic_ADB_S()
             Common.Shift_Src_Cruise = True
 
-          if min % 2 == 0 :
-            Cruise.Inject_Cruise_Traffic_Arrival_des()
+          if min % 2 == 0 and len(SimConnect.MSFS_Cruise_Traffic) < MAX_CRUISE_AI_FLIGHTS:
             Cruise.Inject_Cruise_Traffic_Arrival_src()
-            Cruise.Cruise_Arr_des_Index += 1
             Cruise.Cruise_Arr_src_Index += 1
+          
+          if min % 3 == 0 and len(SimConnect.MSFS_Cruise_Traffic) < MAX_CRUISE_AI_FLIGHTS:
+            Cruise.Inject_Cruise_Traffic_Arrival_des()
+            Cruise.Cruise_Arr_des_Index += 1
           
           if min % 3 == 0:
             Departure.Check_Traffic_Departure()
@@ -401,6 +405,7 @@ class Common:
             Arrival.Check_Traffic_Arrival()
           if min % 3 == 0:
             Cruise.Check_Traffic_Cruise()
+            
 
         prev_min = min
 
@@ -574,7 +579,7 @@ class Cruise:
     global current_dir
     for flight in Cruise.Cruise_Traffic_ADB.iterrows():
       Call = flight[1]["Call"]
-      if Call in SimConnect.MSFS_Cruise_Traffic['Call'].values or len(SimConnect.MSFS_Cruise_Traffic) > MAX_CRUISE_AI_FLIGHTS:
+      if Call in SimConnect.MSFS_Cruise_Traffic['Call'].values:
         continue
       last_element = len(SimConnect.MSFS_Cruise_Traffic)
       Type = flight[1]["Type"]
@@ -599,6 +604,8 @@ class Cruise:
         result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
         Common.Global_req_id+=1
         time.sleep(2)
+        if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
+          sm.AIAircraftAirspeed(SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0],float(Speed))
       except:
         print("Cannot Inject Cruise Flight")
   
@@ -606,8 +613,8 @@ class Cruise:
   def Inject_Cruise_Traffic_Arrival_des():
     global current_dir
     #add departed traffic to fill in sky
-    if Cruise.Cruise_Arr_des_Index  < len(Cruise.FR24_Cruise_Arrival_des_Traffic) and len(SimConnect.MSFS_Cruise_Traffic) < MAX_CRUISE_AI_FLIGHTS:
-      Index = -Cruise.Cruise_Arr_des_Index
+    if Cruise.Cruise_Arr_des_Index  < len(Cruise.FR24_Cruise_Arrival_des_Traffic) :
+      Index = Cruise.FR24_Cruise_Arrival_des_Traffic.index[-Cruise.Cruise_Arr_des_Index]
       if not (Cruise.FR24_Cruise_Arrival_des_Traffic.loc[Index,"Call"] in SimConnect.MSFS_Cruise_Traffic['Call'].values):
         last_element = len(SimConnect.MSFS_Cruise_Traffic)
         try:
@@ -631,6 +638,8 @@ class Cruise:
           result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
           Common.Global_req_id+=1
           time.sleep(2)
+          if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
+            sm.AIAircraftAirspeed(SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0],500)
         except:
           print("Cannot create Arrival Des Cruise flight plan")  
 
@@ -638,7 +647,7 @@ class Cruise:
   def Inject_Cruise_Traffic_Arrival_src():
     global current_dir
     #add departed traffic to fill in sky
-    if Cruise.Cruise_Arr_src_Index  < len(Cruise.FR24_Cruise_Arrival_src_Traffic) and len(SimConnect.MSFS_Cruise_Traffic) < MAX_CRUISE_AI_FLIGHTS :
+    if Cruise.Cruise_Arr_src_Index  < len(Cruise.FR24_Cruise_Arrival_src_Traffic) :
       Index = Cruise.Cruise_Arr_src_Index
       if not (Cruise.FR24_Cruise_Arrival_src_Traffic.loc[Index,"Call"] in SimConnect.MSFS_Cruise_Traffic['Call'].values):
         last_element = len(SimConnect.MSFS_Cruise_Traffic)
@@ -663,6 +672,8 @@ class Cruise:
           result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
           Common.Global_req_id+=1
           time.sleep(2)
+          if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
+            sm.AIAircraftAirspeed(SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0],500)
         except:
           print("Cannot create Arrival Des Cruise flight plan")  
 
@@ -1082,7 +1093,7 @@ class Arrival:
 
   def inject_Traffic_Arrival(RW):
     global current_dir
-    if Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Call"] in SimConnect.MSFS_AI_Arrival_Traffic['Call'].values or len(SimConnect.MSFS_AI_Arrival_Traffic) > MAX_ARRIVAL_AI_FLIGHTS:
+    if Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Call"] in SimConnect.MSFS_AI_Arrival_Traffic['Call'].values:
       return
     if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic):
       last_element = len(SimConnect.MSFS_AI_Arrival_Traffic)
@@ -1120,6 +1131,9 @@ class Arrival:
         print("Arrival----" + Call + " " + Type + " " + str(Livery_name))
         result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(Call[2:]),current_dir + "/fln_plan_arr",float(1),False,Req_Id)
         Common.Global_req_id+=1
+        time.sleep(2)
+        if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
+            sm.AIAircraftAirspeed(SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0],400)
       except:
         print("Cannot create Arrival flight plan")
       #print(flt_plan)
@@ -1395,7 +1409,7 @@ class Departure:
   def Inject_Parked_Traffic():
 
     for index, row in Departure.FR24_Departure_Traffic.iterrows():
-      if row["Call"] in SimConnect.MSFS_AI_Departure_Traffic['Call'].values:
+      if row["Call"] in SimConnect.MSFS_AI_Departure_Traffic['Call'].values or len(SimConnect.MSFS_AI_Departure_Traffic) > MAX_PARKED_AI_FLIGHTS :
         continue
       last_element = len(SimConnect.MSFS_AI_Departure_Traffic)
       if last_element < len(Departure.FR24_Departure_Traffic):
@@ -1442,7 +1456,7 @@ class Departure:
 
   def Assign_Flt_plan():
     global current_dir
-    if Departure.Departure_Index < len(SimConnect.MSFS_AI_Departure_Traffic) and len(SimConnect.MSFS_AI_Departure_Traffic) < MAX_DEPARTURE_AI_FLIGHTS:
+    if Departure.Departure_Index < len(SimConnect.MSFS_AI_Departure_Traffic):
       try:
         Src = SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Src"]
         Des =  SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Des"]
