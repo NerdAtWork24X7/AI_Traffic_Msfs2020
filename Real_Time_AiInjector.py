@@ -35,9 +35,9 @@ DES_ACTIVE_RUNWAY = ""
 USE_FSTRAFFIC_LIVERY = True
 
 
-MAX_ARRIVAL = 20
-MAX_DEPARTURE = 100
-MAX_CRUISE_AI_FLIGHTS = 20
+MAX_ARRIVAL_AI_FLIGHTS = 20
+MAX_DEPARTURE_AI_FLIGHTS = 20
+MAX_CRUISE_AI_FLIGHTS = 50
 CRUISE_ALTITUDE = 10000
 SRC_GROUND_RANGE = 50
 DES_GROUND_RANGE = 100
@@ -303,11 +303,11 @@ class Common:
           
           if (Fr24_Dep_len == 0 or Fr24_Arr_len == 0) and Common.Retry_SRC < 2:
             print("--------------At Departure Airport-------------------") 
-            Departure.Get_Departure(SRC_AIRPORT_IACO,MAX_DEPARTURE)
+            Departure.Get_Departure(SRC_AIRPORT_IACO,100)
             Departure.Inject_Parked_Traffic()
             Departure.Get_SID(SRC_AIRPORT_IACO,SRC_ACTIVE_RUNWAY)
             
-            Arrival.Get_Arrival(SRC_AIRPORT_IACO,MAX_ARRIVAL)
+            Arrival.Get_Arrival(SRC_AIRPORT_IACO,100)
             #Arrival.Get_STAR(SRC_AIRPORT_IACO,SRC_ACTIVE_RUNWAY)
 
             Common.Retry_SRC += 1             #Retry only once if Flight Radar data is available
@@ -342,11 +342,11 @@ class Common:
             Departure.departure_string = ""
             Arrival.approach_string = ""
             
-            Departure.Get_Departure(DES_AIRPORT_IACO,MAX_DEPARTURE)
+            Departure.Get_Departure(DES_AIRPORT_IACO,100)
             Departure.Inject_Parked_Traffic()
             Departure.Get_SID(DES_AIRPORT_IACO,DES_ACTIVE_RUNWAY)
           
-            Arrival.Get_Arrival(DES_AIRPORT_IACO,MAX_ARRIVAL)
+            Arrival.Get_Arrival(DES_AIRPORT_IACO,100)
             #Arrival.Get_STAR(DES_AIRPORT_IACO,DES_ACTIVE_RUNWAY)
           
             Common.Retry_DES += 1             #Retry only once if Flight Radar data is available
@@ -369,18 +369,24 @@ class Common:
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"] > CRUISE_ALTITUDE and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] > DES_GROUND_RANGE:   
           if Common.Shift_Src_Cruise == False:
             print("--------------Crusing------------------")  
-            Cruise.Create_Cruise_Traffic_database(DES_AIRPORT_IACO,100)
+            Cruise.Create_Cruise_Traffic_database_Arrival_des(DES_AIRPORT_IACO,100)
+            Cruise.Inject_Cruise_Traffic_Arrival_des()
+            Cruise.Cruise_Arr_des_Index += 1
+            Cruise.Create_Cruise_Traffic_database_Arrival_src(SRC_AIRPORT_IACO,100)
+            Cruise.Inject_Cruise_Traffic_Arrival_src()
+            Cruise.Cruise_Arr_src_Index += 1
           
           if (min % CRUISE_INJECTION_TIME == 0) or Common.Shift_Src_Cruise == False:
             Cruise.Get_Cruise_Traffic(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],25)
             if Common.Shift_Src_Cruise == False:
-              Cruise.Inject_Cruise_Traffic()
-              Cruise.Cruise_Index += 1
+              Cruise.Inject_Cruise_Traffic_ADB_S()
             Common.Shift_Src_Cruise = True
 
           if min % 2 == 0:
-            Cruise.Inject_Cruise_Traffic()
-            Cruise.Cruise_Index += 1
+            Cruise.Inject_Cruise_Traffic_Arrival_des()
+            Cruise.Inject_Cruise_Traffic_Arrival_src()
+            Cruise.Cruise_Arr_des_Index += 1
+            Cruise.Cruise_Arr_src_Index += 1
           
           if min % 3 == 0:
             Departure.Check_Traffic_Departure()
@@ -396,10 +402,12 @@ class Common:
 
 class Cruise:
   Cruise_Traffic_ADB = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO","Lat","Lon","Altitude","Heading","Speed"])
-  FR24_Cruise_Traffic = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO"])
-  Cruise_Index = 0
+  FR24_Cruise_Arrival_des_Traffic = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO"])
+  FR24_Cruise_Arrival_src_Traffic = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO"])
+  Cruise_Arr_des_Index = 0
+  Cruise_Arr_src_Index = 0
 
-  def Create_Cruise_Traffic_database(airport,max_cruise):
+  def Create_Cruise_Traffic_database_Arrival_des(airport,max_cruise):
     driver = webdriver.Chrome(options=Common.chrome_options)
     driver.set_window_size(945, 1012)
     print("------------Get Cruise Arrival FR24 Traffic---------------------")
@@ -428,12 +436,12 @@ class Cruise:
         flight_info_list = flight_info.split("\n") 
                 
         if flight_info_list[0].split(" ")[0] == "Scheduled" or flight_info_list[0].split(" ")[0] == "Estimated" or flight_info_list[0].split(" ")[0] == "Delayed":
-          if flight_info_list[2] in Cruise.FR24_Cruise_Traffic['Call'].values:
+          if flight_info_list[2] in Cruise.FR24_Cruise_Arrival_des_Traffic['Call'].values:
             continue
-          last_element = len(Cruise.FR24_Cruise_Traffic)
+          last_element = len(Cruise.FR24_Cruise_Arrival_des_Traffic)
           if last_element < max_cruise:
             try:
-              last_element = len(Cruise.FR24_Cruise_Traffic)
+              last_element = len(Cruise.FR24_Cruise_Arrival_des_Traffic)
               Call =  flight_info_list[2]
               Src =  flight_info_list[3]
               Type =  flight_info_list[4]             
@@ -443,19 +451,75 @@ class Cruise:
               
               Src_ICAO = src_air["icao"].iloc[-1]
               Des_ICAO = airport
-              Cruise.FR24_Cruise_Traffic.loc[last_element] = [Call,Type,Src_ICAO,Des_ICAO]
+              Cruise.FR24_Cruise_Arrival_des_Traffic.loc[last_element] = [Call,Type,Src_ICAO,Des_ICAO]
             except:
               print(str(flight_info_list) + " FR24 Arrival not found")
       
       prev_lin = flight_info
     
-    print(Cruise.FR24_Cruise_Traffic)
+    print(Cruise.FR24_Cruise_Arrival_des_Traffic)
+
+    driver.quit()
+    time.sleep(5)
+
+
+  def Create_Cruise_Traffic_database_Arrival_src(airport,max_cruise):
+    driver = webdriver.Chrome(options=Common.chrome_options)
+    driver.set_window_size(945, 1012)
+    print("------------Get Cruise Arrival FR24 Traffic---------------------")
+
+    qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "icao" LIKE '%"""+airport+"""%'"""
+    with Common.engine_fldatabase.connect() as conn:
+      des_air = pd.read_sql(sql=qry_str, con=conn.connection)
+    airport_iata = des_air["iata"].iloc[-1]
+    
+    try:
+      url = "https://www.flightradar24.com/data/airports/" + airport_iata +"/arrivals"
+      driver.get(url)
+      #Arrival.Get_Arrival_ADB_S(des_air["laty"].iloc[-1],des_air["lonx"].iloc[-1],25)
+      time.sleep(10)
+    except:
+      print("Check internet connection = " + url)
+      return
+
+
+    flight_elements = driver.find_elements(By.XPATH, "//td")
+  
+    prev_lin = ""
+    for flight in flight_elements:
+      flight_info = flight.text 
+      if  prev_lin != flight_info:
+        flight_info_list = flight_info.split("\n") 
+                
+        if flight_info_list[0].split(" ")[0] == "Scheduled" or flight_info_list[0].split(" ")[0] == "Estimated" or flight_info_list[0].split(" ")[0] == "Delayed":
+          if flight_info_list[2] in Cruise.FR24_Cruise_Arrival_src_Traffic['Call'].values:
+            continue
+          last_element = len(Cruise.FR24_Cruise_Arrival_src_Traffic)
+          if last_element < max_cruise:
+            try:
+              last_element = len(Cruise.FR24_Cruise_Arrival_src_Traffic)
+              Call =  flight_info_list[2]
+              Src =  flight_info_list[3]
+              Type =  flight_info_list[4]             
+              qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+re.search(r'\((.*?)\)', Src).group(1).upper()+"""%'"""
+              with Common.engine_fldatabase.connect() as conn:
+                  src_air = pd.read_sql(sql=qry_str, con=conn.connection)
+              
+              Src_ICAO = src_air["icao"].iloc[-1]
+              Des_ICAO = airport
+              Cruise.FR24_Cruise_Arrival_src_Traffic.loc[last_element] = [Call,Type,Src_ICAO,Des_ICAO]
+            except:
+              print(str(flight_info_list) + " FR24 Cruise Arrival not found")
+      
+      prev_lin = flight_info
+    
+    print(Cruise.FR24_Cruise_Arrival_src_Traffic)
 
     driver.quit()
     time.sleep(5)
 
   
-  def Get_Cruise_Traffic(lat,lon,dist):
+  def Get_Cruise_Traffic_ADS_S(lat,lon,dist):
     
     url = "https://adsbx-flight-sim-traffic.p.rapidapi.com/api/aircraft/json/lat/" + str(lat) + "/lon/" + str(lon) +"/dist/" + str(dist) +"/"
     headers = {
@@ -499,11 +563,11 @@ class Cruise:
     #if len(Cruise.Cruise_Traffic_ADB) > 0:
     #  print(Cruise.Cruise_Traffic_ADB)
       
-  def Inject_Cruise_Traffic():
+  def Inject_Cruise_Traffic_ADB_S():
     global current_dir
     for flight in Cruise.Cruise_Traffic_ADB.iterrows():
       Call = flight[1]["Call"]
-      if Call in SimConnect.MSFS_Cruise_Traffic['Call'].values:
+      if Call in SimConnect.MSFS_Cruise_Traffic['Call'].values or len(SimConnect.MSFS_Cruise_Traffic) > MAX_CRUISE_AI_FLIGHTS:
         continue
       last_element = len(SimConnect.MSFS_Cruise_Traffic)
       Type = flight[1]["Type"]
@@ -530,16 +594,20 @@ class Cruise:
         time.sleep(2)
       except:
         print("Cannot Inject Cruise Flight")
-    
+  
+
+  def Inject_Cruise_Traffic_Arrival_des():
+    global current_dir
     #add departed traffic to fill in sky
-    if Cruise.Cruise_Index  < len(Cruise.FR24_Cruise_Traffic):
-      if not (Cruise.FR24_Cruise_Traffic.loc[Cruise.Cruise_Index,"Call"] in SimConnect.MSFS_Cruise_Traffic['Call'].values):
+    if Cruise.Cruise_Arr_des_Index  < len(Cruise.FR24_Cruise_Arrival_des_Traffic) and len(SimConnect.MSFS_Cruise_Traffic) < MAX_CRUISE_AI_FLIGHTS:
+      Index = -Cruise.Cruise_Arr_des_Index
+      if not (Cruise.FR24_Cruise_Arrival_des_Traffic.loc[Index,"Call"] in SimConnect.MSFS_Cruise_Traffic['Call'].values):
         last_element = len(SimConnect.MSFS_Cruise_Traffic)
         try:
-          Src = Cruise.FR24_Cruise_Traffic.loc[Cruise.Cruise_Index,"Src_ICAO"]
-          Des =  Cruise.FR24_Cruise_Traffic.loc[Cruise.Cruise_Index,"Des_ICAO"]
-          Call = Cruise.FR24_Cruise_Traffic.loc[Cruise.Cruise_Index,"Call"]
-          Type = Cruise.FR24_Cruise_Traffic.loc[Cruise.Cruise_Index,"Type"]
+          Src = Cruise.FR24_Cruise_Arrival_des_Traffic.loc[Index,"Src_ICAO"]
+          Des =  Cruise.FR24_Cruise_Arrival_des_Traffic.loc[Index,"Des_ICAO"]
+          Call = Cruise.FR24_Cruise_Arrival_des_Traffic.loc[Index,"Call"]
+          Type = Cruise.FR24_Cruise_Arrival_des_Traffic.loc[Index,"Type"]
           Cur_Lat = SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"]
           Cur_Log = SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"]
           Altitude = float(SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"])
@@ -557,7 +625,39 @@ class Cruise:
           Common.Global_req_id+=1
           time.sleep(2)
         except:
-          print("Cannot create Departure Cruise flight plan")  
+          print("Cannot create Arrival Des Cruise flight plan")  
+
+
+  def Inject_Cruise_Traffic_Arrival_src():
+    global current_dir
+    #add departed traffic to fill in sky
+    if Cruise.Cruise_Arr_src_Index  < len(Cruise.FR24_Cruise_Arrival_src_Traffic) and len(SimConnect.MSFS_Cruise_Traffic) < MAX_CRUISE_AI_FLIGHTS :
+      Index = -Cruise.Cruise_Arr_src_Index
+      if not (Cruise.FR24_Cruise_Arrival_src_Traffic.loc[Index,"Call"] in SimConnect.MSFS_Cruise_Traffic['Call'].values):
+        last_element = len(SimConnect.MSFS_Cruise_Traffic)
+        try:
+          Src = Cruise.FR24_Cruise_Arrival_src_Traffic.loc[Index,"Src_ICAO"]
+          Des =  Cruise.FR24_Cruise_Arrival_src_Traffic.loc[Index,"Des_ICAO"]
+          Call = Cruise.FR24_Cruise_Arrival_src_Traffic.loc[Index,"Call"]
+          Type = Cruise.FR24_Cruise_Arrival_src_Traffic.loc[Index,"Type"]
+          Cur_Lat = SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"]
+          Cur_Log = SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"]
+          Altitude = float(SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"])
+          Heading  = 0
+          Speed = -1
+          Obj_Id =  0
+          Flt_plan = 0
+          Req_Id = Common.Global_req_id
+          SimConnect.MSFS_Cruise_Traffic.loc[last_element] = [Call,Type,Src,Des,Cur_Lat,Cur_Log,Altitude,Heading,Speed,Flt_plan,Req_Id,Obj_Id]
+          Livery_name = Common.Get_flight_match(Call,Type)
+          Altitude_offset = random.choice([-1000,-2000,-3000,-4000,-5000,1000,2000,3000])
+          flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat), float(Cur_Log) ,Speed,float(int(Altitude) + int(Altitude_offset)))
+          print("Crusing----" + Call + " " + Type + " " + str(Livery_name))
+          result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
+          Common.Global_req_id+=1
+          time.sleep(2)
+        except:
+          print("Cannot create Arrival Des Cruise flight plan")  
 
     #print(SimConnect.MSFS_Cruise_Traffic)
 
@@ -975,7 +1075,7 @@ class Arrival:
 
   def inject_Traffic_Arrival(RW):
     global current_dir
-    if Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Call"] in SimConnect.MSFS_AI_Arrival_Traffic['Call'].values:
+    if Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Call"] in SimConnect.MSFS_AI_Arrival_Traffic['Call'].values or len(SimConnect.MSFS_AI_Arrival_Traffic) > MAX_ARRIVAL_AI_FLIGHTS:
       return
     if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic):
       last_element = len(SimConnect.MSFS_AI_Arrival_Traffic)
@@ -1335,7 +1435,7 @@ class Departure:
 
   def Assign_Flt_plan():
     global current_dir
-    if Departure.Departure_Index < len(SimConnect.MSFS_AI_Departure_Traffic):
+    if Departure.Departure_Index < len(SimConnect.MSFS_AI_Departure_Traffic) and len(SimConnect.MSFS_AI_Departure_Traffic) < MAX_DEPARTURE_AI_FLIGHTS:
       try:
         Src = SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Src"]
         Des =  SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Des"]
