@@ -35,7 +35,7 @@ class SimConnect:
 	MSFS_AI_Departure_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Req_Id","Obj_Id"])
 	MSFS_User_Aircraft =  pd.DataFrame(columns=["Cur_Lat","Cur_Log","Altitude","Dis_Src", "Dis_Des","Req_Id","Obj_Id"])
 	MSFS_Cruise_Traffic = pd.DataFrame(columns=["Call","Type","Src","Des","Cur_Lat","Cur_Log","Altitude","Heading","Speed","Flt_plan","Req_Id","Obj_Id"])
-		
+	
 	def IsHR(self, hr, value):
 		_hr = ctypes.HRESULT(hr)
 		return ctypes.c_ulong(_hr.value).value == value
@@ -59,61 +59,36 @@ class SimConnect:
 
 	
 	def handle_Remove_Exception(self,dwRequestID):
-
-		
-		if dwRequestID in self.MSFS_AI_Arrival_Traffic["Req_Id"].values:
-			self.MSFS_AI_Arrival_Traffic = self.MSFS_AI_Arrival_Traffic[self.MSFS_AI_Arrival_Traffic['Req_Id'] != dwRequestID]
-			print(self.MSFS_AI_Arrival_Traffic["Call"] + "  Removed")
-
-		if dwRequestID in self.MSFS_AI_Departure_Traffic["Req_Id"].values:
-			self.MSFS_AI_Departure_Traffic = self.MSFS_AI_Departure_Traffic[self.MSFS_AI_Departure_Traffic['Req_Id'] != dwRequestID]
-			print(self.MSFS_AI_Departure_Traffic["Call"] + "  Removed")
-	
+		pass
 	
 	def handle_addremove_simobject_event(self,pData):
 		req_id = pData.dwRequestID
 		obj_id = pData.dwObjectID
-		
-        
+		        
 		if req_id in self.MSFS_AI_Arrival_Traffic["Req_Id"].values:
 			if self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Req_Id"] == req_id, "Obj_Id"].values[0] == 0:
 				self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Req_Id"] == req_id, "Obj_Id"] = obj_id
 				#print(self.MSFS_AI_Arrival_Traffic.iloc[-1]["Call"] + "  Added")
-			else:
-				#Request to Remove 
-				self.MSFS_AI_Arrival_Traffic = self.MSFS_AI_Arrival_Traffic[self.MSFS_AI_Arrival_Traffic['Req_Id'] != req_id]
-				print(self.MSFS_AI_Arrival_Traffic["Call"] + "  Removed")
-
 		
 		if req_id in self.MSFS_AI_Departure_Traffic["Req_Id"].values:
 			if self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Req_Id"] == req_id, "Obj_Id"].values[0] == 0:
 				self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Req_Id"] == req_id, "Obj_Id"] = obj_id
 				#print(self.MSFS_AI_Departure_Traffic.iloc[-1]["Call"] + "  Added")
-			else:
-				#Request to Add 
-				self.MSFS_AI_Departure_Traffic = self.MSFS_AI_Departure_Traffic[self.MSFS_AI_Departure_Traffic['Req_Id'] != req_id]
-				print(self.MSFS_AI_Departure_Traffic["Call"] + "  Removed")
 
 
+		if req_id in self.MSFS_Cruise_Traffic["Req_Id"].values:
+			if self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Req_Id"] == req_id, "Obj_Id"].values[0] == 0:
+				self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Req_Id"] == req_id, "Obj_Id"] = obj_id
+				#print(self.MSFS_Cruise_Traffic.iloc[-1]["Call"] + "  Added")
 
-	    #if pData.dwRequestID == 0:
-	    #	#print("AI object added: ObjectID=" + str(pData.dwObjectID))
-	    #	self.air_1_obj = pData.dwObjectID
-	    #if pData.dwRequestID == 1:
-	    #	#print("AI object added: ObjectID=" + str(pData.dwObjectID))
-	    #	self.air_2_obj = pData.dwObjectID
 
 
 	def handle_ai_aircraft(self,pObjData):
 		req_id = pObjData.dwRequestID
 		obj_id = pObjData.dwObjectID
         
-		if obj_id in self.MSFS_AI_Arrival_Traffic["Obj_Id"].values:
-			#Prv_Lat = self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Cur_Lat"].values[0]
-			#Prv_Log  = self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Cur_Log"].values[0]
-			#self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Prv_Lat"] = Prv_Lat
-			#self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Prv_Log"] = Prv_Log
-			
+
+		if obj_id in self.MSFS_AI_Arrival_Traffic["Obj_Id"].values:		
 			addressof_dwData = ctypes.addressof(pObjData.dwData)
 			pointer = ctypes.cast(addressof_dwData, ctypes.POINTER(ctypes.c_double))
 			altitude = float(pointer[0])
@@ -134,6 +109,17 @@ class SimConnect:
 			self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Obj_Id"] == obj_id, "Cur_Log"] = longitude
 			self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Obj_Id"] == obj_id, "Altitude"] = altitude
 
+		if obj_id in self.MSFS_Cruise_Traffic["Obj_Id"].values:
+			addressof_dwData = ctypes.addressof(pObjData.dwData)
+			pointer = ctypes.cast(addressof_dwData, ctypes.POINTER(ctypes.c_double))
+			altitude = float(pointer[0])
+			Latitude = float(pointer[1])
+			longitude = float(pointer[2])
+			self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Obj_Id"] == obj_id, "Cur_Lat"] = Latitude
+			self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Obj_Id"] == obj_id, "Cur_Log"] = longitude
+			self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Obj_Id"] == obj_id, "Altitude"] = altitude		
+		
+		
 		if obj_id == 1:
 			addressof_dwData = ctypes.addressof(pObjData.dwData)
 			pointer = ctypes.cast(addressof_dwData, ctypes.POINTER(ctypes.c_double))
@@ -156,10 +142,10 @@ class SimConnect:
 		for _reqin in self.Requests:
 			_request = self.Requests[_reqin]
 			if _request.LastID == _unsendid:
-				LOGGER.warn("%s: in %s" % (_exception, _request.definitions[0]))
+				#LOGGER.warn("%s: in %s" % (_exception, _request.definitions[0]))
 				return
 			self.handle_Remove_Exception(_request.LastID)
-		LOGGER.warn(_exception)
+		#LOGGER.warn(_exception)
 
 	def handle_state_event(self, pData):
 		print("I:", pData.dwInteger, "F:", pData.fFloat, "S:", pData.szString)
@@ -239,6 +225,7 @@ class SimConnect:
 		self.paused = False
 		self.DEFINITION_POS = None
 		self.DEFINITION_WAYPOINT = None
+		self.DEFINITION_AIRSPEED = None
 		self.my_dispatch_proc_rd = self.dll.DispatchProc(self.my_dispatch_proc)
 		
 		if auto_connect:
@@ -423,4 +410,28 @@ class SimConnect:
 			0
 		)
 		return retval
+	
+	def AIAircraftAirspeed(self,object_id,airspeed):
+		
+		if self.DEFINITION_AIRSPEED is None:
+			self.DEFINITION_AIRSPEED = self.new_def_id()
+			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_AIRSPEED.value,b'AIRSPEED INDICATED',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+		
+		pyarr = list([airspeed])
+		dataarray = (ctypes.c_double * len(pyarr))(*pyarr)
 
+		pObjData = cast(
+			dataarray, c_void_p
+		)
+				
+		retval = self.dll.SetDataOnSimObject(
+		    self.hSimConnect,
+			self.DEFINITION_AIRSPEED.value,
+			object_id,
+			0,
+			0,
+			sizeof(ctypes.c_double) * len(pyarr),
+			pObjData
+		)
+		return retval
+		

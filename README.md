@@ -15,6 +15,7 @@ This project reads real-time flight data from Flight Radar 24 and injects it int
 - FSLT base package
 - ADB-s api for tracking live flight at cruise https://rapidapi.com/adsbx/api/adsbx-flight-sim-traffic/pricing
 - Make sure departure and destination airport has medium and large gate else Ai traffic will not be swapened if msfs is not able to detect the gates
+- Prefiled sim brief plan
 
 ## Installation
 - git clone https://github.com/NerdAtWork24X7/AI_Traffic_Msfs2020.git
@@ -23,32 +24,31 @@ This project reads real-time flight data from Flight Radar 24 and injects it int
 
 ##Config
  - Create config.py file and add api keys from ADB-S account
-   - config = {"key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","host" : "adsbx-flight-sim-traffic.p.rapidapi.com"}
+   - config = {"key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","host" : "adsbx-flight-sim-traffic.p.rapidapi.com", "simbrief_username" : "abc"}
 
 
 ## Modify this Parameters to inject traffic at airport
-    # Mandatory parameter before start
-      - SRC_AIRPORT_IACO = "VABB"
-      - DES_AIRPORT_IACO = "EDDF"
-      - SRC_ACTIVE_RUNWAY = "27"
-      - S_ACTIVE_RUNWAY = "25R"
-
-    # Optional Parameter you can tweak it or keep it as they are
-      - MAX_ARRIVAL = 20
-      - MAX_DEPARTURE = 20
+  # Optional Parameter you can tweak it or keep it as they are
+      - USE_FSTRAFFIC_LIVERY = True
+      - MAX_ARRIVAL_AI_FLIGHTS = 20
+      - MAX_DEPARTURE_AI_FLIGHTS = 20
       - MAX_CRUISE_AI_FLIGHTS = 20
+      - MAX_PARKED_AI_FLIGHTS = 40
       - CRUISE_ALTITUDE = 10000
       - SRC_GROUND_RANGE = 50
       - DES_GROUND_RANGE = 100
-      - GROUND_INJECTION_TIME = 2
+      - GROUND_INJECTION_TIME_ARR = 3
+      - GROUND_INJECTION_TIME_DEP = 2
       - CRUISE_INJECTION_TIME = 5
       - SPWAN_DIST = 200
-      - SPWAN_ALTITUDE = 10000
+      - SPWAN_ALTITUDE = 20000
 
 
 
 ## Running Script :
-  python3 Real_Time_AiInjector.py
+  - File simbrief plan
+  - Start MSFS 2020 and wait untill flight is loaded
+  - python3 Real_Time_AiInjector.py
 
 
 ## Acknowledgements

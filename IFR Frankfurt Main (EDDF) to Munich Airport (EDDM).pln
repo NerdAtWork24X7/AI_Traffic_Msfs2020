@@ -1,0 +1,261 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<SimBase.Document Type="AceXML" version="1,0">
+    <Descr>AceXML Document</Descr>
+    <FlightPlan.FlightPlan>
+        <Title>EDDF to EDDM</Title>
+        <FPType>IFR</FPType>
+        <RouteType>LowAlt</RouteType>
+        <CruisingAlt>13000</CruisingAlt>
+        <DepartureID>EDDF</DepartureID>
+        <DepartureLLA>N50° 2' 45.14",E8° 33' 57.63",+000363.00</DepartureLLA>
+        <DestinationID>EDDM</DestinationID>
+        <DestinationLLA>N48° 21' 18.42",E11° 47' 16.12",+001524.00</DestinationLLA>
+        <Descr>EDDF, EDDM created by Little Navmap 3.0.12</Descr>
+        <DeparturePosition>GATE A 22</DeparturePosition>
+        <DepartureName>Frankfurt/Main</DepartureName>
+        <DestinationName>Munich Airport</DestinationName>
+        <AppVersion>
+            <AppVersionMajor>11</AppVersionMajor>
+            <AppVersionBuild>282174</AppVersionBuild>
+        </AppVersion>
+        <ATCWaypoint id="EDDF">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N50° 1' 59.90",E8° 34' 13.67",+000363.00</WorldPosition>
+            <ICAO>
+                <ICAOIdent>EDDF</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="RW25C">
+            <ATCWaypointType>User</ATCWaypointType>
+            <WorldPosition>N50° 2' 42.53",E8° 35' 13.44",+000363.00</WorldPosition>
+            <DepartureFP>CIND4F</DepartureFP>
+            <RunwayNumberFP>25</RunwayNumberFP>
+            <RunwayDesignatorFP>CENTER</RunwayDesignatorFP>
+            <ICAO>
+                <ICAOIdent>RW25C</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="RW25C">
+            <ATCWaypointType>User</ATCWaypointType>
+            <WorldPosition>N50° 2' 42.53",E8° 35' 13.44",+000363.00</WorldPosition>
+            <DepartureFP>CIND4F</DepartureFP>
+            <RunwayNumberFP>25</RunwayNumberFP>
+            <RunwayDesignatorFP>CENTER</RunwayDesignatorFP>
+            <ICAO>
+                <ICAOIdent>RW25C</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF134">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 1' 43.74",E8° 31' 7.57",+001303.36</WorldPosition>
+            <DepartureFP>CIND4F</DepartureFP>
+            <RunwayNumberFP>25</RunwayNumberFP>
+            <RunwayDesignatorFP>CENTER</RunwayDesignatorFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF134</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF141">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 1' 4.48",E8° 30' 7.42",+001610.78</WorldPosition>
+            <DepartureFP>CIND4F</DepartureFP>
+            <RunwayNumberFP>25</RunwayNumberFP>
+            <RunwayDesignatorFP>CENTER</RunwayDesignatorFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF141</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF143">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 58' 57.86",E8° 28' 56.99",+002361.15</WorldPosition>
+            <DepartureFP>CIND4F</DepartureFP>
+            <RunwayNumberFP>25</RunwayNumberFP>
+            <RunwayDesignatorFP>CENTER</RunwayDesignatorFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF143</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF137">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 57' 57.32",E8° 31' 42.45",+003044.32</WorldPosition>
+            <DepartureFP>CIND4F</DepartureFP>
+            <RunwayNumberFP>25</RunwayNumberFP>
+            <RunwayDesignatorFP>CENTER</RunwayDesignatorFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF137</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF159">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 56' 58.59",E8° 34' 25.10",+003713.96</WorldPosition>
+            <DepartureFP>CIND4F</DepartureFP>
+            <RunwayNumberFP>25</RunwayNumberFP>
+            <RunwayDesignatorFP>CENTER</RunwayDesignatorFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF159</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF170">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 51' 53.99",E8° 48' 31.10",+007197.29</WorldPosition>
+            <DepartureFP>CIND4F</DepartureFP>
+            <RunwayNumberFP>25</RunwayNumberFP>
+            <RunwayDesignatorFP>CENTER</RunwayDesignatorFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF170</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="AMTIX">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 45' 43.59",E9° 5' 29.53",+011406.95</WorldPosition>
+            <DepartureFP>CIND4F</DepartureFP>
+            <RunwayNumberFP>25</RunwayNumberFP>
+            <RunwayDesignatorFP>CENTER</RunwayDesignatorFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>AMTIX</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="CINDY">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 44' 48.46",E9° 11' 15.16",+012690.45</WorldPosition>
+            <DepartureFP>CIND4F</DepartureFP>
+            <RunwayNumberFP>25</RunwayNumberFP>
+            <RunwayDesignatorFP>CENTER</RunwayDesignatorFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>CINDY</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="SUPIX">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 43' 39.99",E9° 18' 19.02",+013000.00</WorldPosition>
+            <ATCAirway>Z403</ATCAirway>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>SUPIX</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="RATIM">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 41' 35.32",E9° 31' 0.42",+013000.00</WorldPosition>
+            <ATCAirway>Z403</ATCAirway>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>RATIM</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="TAKUT">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 22' 33.68",E10° 7' 15.33",+013000.00</WorldPosition>
+            <ATCAirway>L603</ATCAirway>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>TAKUT</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DINKU">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 14' 10.00",E10° 22' 59.00",+013000.00</WorldPosition>
+            <ATCAirway>L603</ATCAirway>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DINKU</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="BEMBO">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 8' 3.00",E10° 32' 4.97",+013000.00</WorldPosition>
+            <ATCAirway>L603</ATCAirway>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>BEMBO</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="AKANU">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 3' 3.00",E10° 39' 29.15",+013000.00</WorldPosition>
+            <ATCAirway>L603</ATCAirway>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>AKANU</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="LUPOX">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N48° 55' 20.00",E10° 50' 48.98",+013000.00</WorldPosition>
+            <ATCAirway>L603</ATCAirway>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>LUPOX</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="RENLO">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N48° 46' 30.01",E11° 3' 43.02",+013000.00</WorldPosition>
+            <ATCAirway>L603</ATCAirway>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>RENLO</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="BESNI">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N48° 38' 37.00",E11° 15' 5.99",+013000.00</WorldPosition>
+            <ATCAirway>L603</ATCAirway>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>BESNI</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="MIQ">
+            <ATCWaypointType>NDB</ATCWaypointType>
+            <WorldPosition>N48° 34' 12.81",E11° 35' 51.01",+013000.00</WorldPosition>
+            <ATCAirway>L605</ATCAirway>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>MIQ</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="ANKER">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N48° 34' 21.45",E12° 0' 8.40",+013000.00</WorldPosition>
+            <ATCAirway>T105</ATCAirway>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>ANKER</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="LANDU">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N48° 35' 46.91",E12° 16' 26.13",+013000.00</WorldPosition>
+            <ATCAirway>T105</ATCAirway>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>LANDU</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="EDDM">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N48° 21' 18.42",E11° 47' 16.12",+001524.00</WorldPosition>
+            <ApproachTypeFP>ILS</ApproachTypeFP>
+            <RunwayNumberFP>26</RunwayNumberFP>
+            <RunwayDesignatorFP>LEFT</RunwayDesignatorFP>
+            <ICAO>
+                <ICAOIdent>EDDM</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+    </FlightPlan.FlightPlan>
+</SimBase.Document>
