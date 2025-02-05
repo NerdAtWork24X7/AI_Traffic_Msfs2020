@@ -373,7 +373,10 @@ class Common:
               else:
                 print("Arrival injection Completed at destination airport")  
               Common.Skip_injection += 1
-            
+          
+          if min % 3 == 0 and Common.Shift_Src_Cruise == True:
+            Cruise.Check_Traffic_Cruise()    
+        
         # if User aircraft is Crusing
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"] > CRUISE_ALTITUDE and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] > DES_GROUND_RANGE:   
           if Common.Shift_Src_Cruise == False:
