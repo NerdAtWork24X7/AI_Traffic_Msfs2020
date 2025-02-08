@@ -41,7 +41,7 @@ MAX_PARKED_AI_FLIGHTS = 40
 CRUISE_ALTITUDE = 10000
 SRC_GROUND_RANGE = 50
 DES_GROUND_RANGE = 100
-GROUND_INJECTION_TIME_ARR = 3
+GROUND_INJECTION_TIME_ARR = 2
 GROUND_INJECTION_TIME_DEP = 2
 CRUISE_INJECTION_TIME = 5
 SPWAN_DIST = 200
@@ -325,7 +325,7 @@ class Common:
 
             if min % GROUND_INJECTION_TIME_ARR == 0 and len(SimConnect.MSFS_AI_Arrival_Traffic) < MAX_ARRIVAL_AI_FLIGHTS:
               if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic) :
-                if Common.Skip_injection % 4 != 0:
+                if Common.Skip_injection % 5 != 0:
                   Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
                   Arrival.Arrival_Index += 1
               else:
@@ -367,7 +367,7 @@ class Common:
 
             if min % GROUND_INJECTION_TIME_ARR == 0 and len(SimConnect.MSFS_AI_Arrival_Traffic) < MAX_ARRIVAL_AI_FLIGHTS:
               if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic) :
-                if Common.Skip_injection % 4 != 0:
+                if Common.Skip_injection % 5 != 0:
                   Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
                   Arrival.Arrival_Index += 1
               else:
@@ -1127,7 +1127,8 @@ class Arrival:
       Stuck = 0
       Req_Id = Common.Global_req_id
       Obj_Id = 0
-      SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Req_Id,Obj_Id]
+      Airspeed = 0.0
+      SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Req_Id,Obj_Id]
       try:
         flt_plan = Arrival.Create_flight_plan_arr(Src,Des,RW)
         Livery_name = Common.Get_flight_match(Call,Type)
@@ -1167,6 +1168,17 @@ class Arrival:
         print("Error: Arrival " + str(flight))
     SimConnect.MSFS_AI_Arrival_Traffic = SimConnect.MSFS_AI_Arrival_Traffic.reset_index(drop=True)
     #print(SimConnect.MSFS_AI_Arrival_Traffic)
+
+  def Check_Traffic_onRunway_Arrival():
+    for index, flight in SimConnect.MSFS_AI_Arrival_Traffic.iterrows():
+      sm.AIAircraft_GetPosition(flight["Req_Id"],flight["Obj_Id"])
+      time.sleep(1)
+      try:
+        print(flight["Call"]+ " Airspeed = " + str(flight["Airspeed"]))
+        if flight["Airspeed"] != 0.0 and flight["Airspeed"] <= 50.0:
+          sm.AIAircraftAirspeed(flight["Obj_Id"],50)
+      except:
+        print("Unable to set speed of aircraft on runway")
 
 class Departure:
   
