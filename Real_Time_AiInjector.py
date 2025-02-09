@@ -1057,7 +1057,7 @@ class Arrival:
       qry_str = '''SELECT "_rowid_", * FROM "main"."approach" WHERE "airport_ident" LIKE '%'''+des+'''%' ESCAPE '\\' AND "type" LIKE '%GPS%' ESCAPE '\\' AND "suffix" LIKE '%A%' ESCAPE '\\' AND "runway_name" LIKE '%'''+RW+'''%' ESCAPE '\\'LIMIT 0, 49999;'''
       approach_df = pd.read_sql(sql=qry_str, con=conn.connection)
 
-    point1 = (float(df_close_waypoint["laty"]),float(df_close_waypoint["lonx"]))
+    point1 = (float(src_df.iloc[-1]["laty"]),float(src_df.iloc[-1]["lonx"]))
     prev_distance = 99999999999
     Cur_app_leg_df = pd.DataFrame()
     approach_string = ""
@@ -1077,8 +1077,7 @@ class Arrival:
               App_Name = app["fix_ident"]
               prev_distance = distance
       
-    
-    dis_closeWP_Air = geodesic((float(df_close_waypoint["laty"]),float(df_close_waypoint["lonx"])), (float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]))).km
+  
     if len(Cur_app_leg_df) > 0:
       for index, app_leg in Cur_app_leg_df.iterrows():
         with Common.engine_fldatabase.connect() as conn:
@@ -1087,7 +1086,7 @@ class Arrival:
           if len(way_df) > 0 :
             point2 = (way_df.iloc[-1]["laty"], way_df.iloc[-1]["lonx"]) 
             distance = geodesic((float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"])), point2).km
-            if distance < dis_closeWP_Air and src_waypoint_id != way_df.iloc[-1]["ident"]:
+            if distance < 100 :
               app_waypoint_Pos = Common.format_coordinates(float(way_df["laty"].iloc[-1]),float(way_df["lonx"].iloc[-1]),float(5000))  
               approach_string += """        <ATCWaypoint id=\"""" + app_leg["fix_ident"] + """\">
                     <ATCWaypointType>Intersection</ATCWaypointType>
@@ -1131,15 +1130,6 @@ class Arrival:
             <WorldPosition>"""+src_Pos+"""</WorldPosition>
             <ICAO>
                 <ICAOIdent>"""+src + """</ICAOIdent>
-            </ICAO>
-        </ATCWaypoint>
-        <ATCWaypoint id=\"""" + src_waypoint_id + """\">
-            <ATCWaypointType>Intersection</ATCWaypointType>
-            <WorldPosition>"""+src_waypoint_Pos+"""</WorldPosition>
-            <SpeedMaxFP>400</SpeedMaxFP>
-            <ICAO>
-                <ICAORegion>""" + src_waypoint_reg + """</ICAORegion>
-                <ICAOIdent>""" + src_waypoint_id + """</ICAOIdent>
             </ICAO>
         </ATCWaypoint>\n""" +  approach_string + """        <ATCWaypoint id=\""""+ des +"""\">
             <ATCWaypointType>Airport</ATCWaypointType>
@@ -1589,3 +1579,4 @@ class Departure:
 
 Common.Run()
 
+#Arrival.Create_flight_plan_arr("LFPG","VABB","27")
