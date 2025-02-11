@@ -1261,7 +1261,7 @@ class Arrival:
         heading1 = int(df.iloc[i]['Heading'])
         heading2 = int(df.iloc[j]['Heading'])
         # Use a tolerance to compare headings
-        if abs(heading1 - heading2) < 20:  # 10 degrees tolerance for heading comparison
+        if abs(heading1 - heading2) < 45:  # 45 degrees tolerance for heading comparison
             if df.iloc[i]["ON_Ground"] == 0 and df.iloc[j]["ON_Ground"] == 0:
                 lat1, lon1 = df.iloc[i][['Cur_Lat', 'Cur_Log']]
                 lat2, lon2 = df.iloc[j][['Cur_Lat', 'Cur_Log']]
