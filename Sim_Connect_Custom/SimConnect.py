@@ -10,6 +10,7 @@ from .Attributes import *
 import os
 import threading
 import pandas as pd
+import math
 
 
 
@@ -26,12 +27,16 @@ class AircraftData(ctypes.Structure):
         ("Altitude", ctypes.c_double),
         ("Latitude", ctypes.c_double),
         ("Longitude", ctypes.c_double),
+        ("Airspeed", ctypes.c_double),
+        ("Landing_light", ctypes.c_double),
+        ("ON_Ground", ctypes.c_double),
+        ("Heading", ctypes.c_double),
     ]
 		
 
 class SimConnect:
 	
-	MSFS_AI_Arrival_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Req_Id","Obj_Id"])
+	MSFS_AI_Arrival_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Airspeed","Landing_light","ON_Ground","Heading","Req_Id","Obj_Id"])
 	MSFS_AI_Departure_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Req_Id","Obj_Id"])
 	MSFS_User_Aircraft =  pd.DataFrame(columns=["Cur_Lat","Cur_Log","Altitude","Dis_Src", "Dis_Des","Req_Id","Obj_Id"])
 	MSFS_Cruise_Traffic = pd.DataFrame(columns=["Call","Type","Src","Des","Cur_Lat","Cur_Log","Altitude","Heading","Speed","Flt_plan","Req_Id","Obj_Id"])
@@ -94,9 +99,18 @@ class SimConnect:
 			altitude = float(pointer[0])
 			Latitude = float(pointer[1])
 			longitude = float(pointer[2])
+			Airspeed = float(pointer[3])
+			Landing_light = float(pointer[4])
+			ON_Ground = float(pointer[5])
+			Heading = math.degrees(float(pointer[6]))
 			self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Cur_Lat"] = Latitude
 			self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Cur_Log"] = longitude
 			self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Altitude"] = altitude
+			self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Airspeed"] = Airspeed
+			self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Landing_light"] = Landing_light
+			self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "ON_Ground"] = ON_Ground
+			self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Obj_Id"] == obj_id, "Heading"] = Heading
+			
 
 
 		if obj_id in self.MSFS_AI_Departure_Traffic["Obj_Id"].values:
@@ -109,6 +123,7 @@ class SimConnect:
 			self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Obj_Id"] == obj_id, "Cur_Log"] = longitude
 			self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Obj_Id"] == obj_id, "Altitude"] = altitude
 
+
 		if obj_id in self.MSFS_Cruise_Traffic["Obj_Id"].values:
 			addressof_dwData = ctypes.addressof(pObjData.dwData)
 			pointer = ctypes.cast(addressof_dwData, ctypes.POINTER(ctypes.c_double))
@@ -117,8 +132,8 @@ class SimConnect:
 			longitude = float(pointer[2])
 			self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Obj_Id"] == obj_id, "Cur_Lat"] = Latitude
 			self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Obj_Id"] == obj_id, "Cur_Log"] = longitude
-			self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Obj_Id"] == obj_id, "Altitude"] = altitude		
-		
+			self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Obj_Id"] == obj_id, "Altitude"] = altitude
+
 		
 		if obj_id == 1:
 			addressof_dwData = ctypes.addressof(pObjData.dwData)
@@ -397,6 +412,11 @@ class SimConnect:
 			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'Plane Altitude',b'feet',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
 			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'Plane Latitude',b'degrees',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
 			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'Plane Longitude',b'degrees',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			#self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'AIRSPEED INDICATED',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'AIRSPEED TRUE',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'LIGHT LANDING',b'bool',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'SIM ON GROUND',b'bool',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'HEADING INDICATOR',b'radians',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
 				
 		retval = self.dll.RequestDataOnSimObject(
 		    self.hSimConnect,
@@ -415,7 +435,8 @@ class SimConnect:
 		
 		if self.DEFINITION_AIRSPEED is None:
 			self.DEFINITION_AIRSPEED = self.new_def_id()
-			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_AIRSPEED.value,b'AIRSPEED INDICATED',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			#self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_AIRSPEED.value,b'AIRSPEED INDICATED',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_AIRSPEED.value,b'AIRSPEED TRUE',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
 		
 		pyarr = list([airspeed])
 		dataarray = (ctypes.c_double * len(pyarr))(*pyarr)
