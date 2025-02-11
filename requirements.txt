@@ -6,3 +6,4 @@ selenium
 timezonefinder
 pytz
 tzlocal
+haversine

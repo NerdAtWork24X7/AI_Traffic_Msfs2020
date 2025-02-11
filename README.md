@@ -42,6 +42,7 @@ This project reads real-time flight data from Flight Radar 24 and injects it int
       - CRUISE_INJECTION_TIME = 5
       - SPWAN_DIST = 200
       - SPWAN_ALTITUDE = 20000
+      - MIN_SEPARATION = 10 #KM
 
 
 
