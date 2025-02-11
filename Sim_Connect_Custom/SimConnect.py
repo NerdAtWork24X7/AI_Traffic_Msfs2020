@@ -412,8 +412,10 @@ class SimConnect:
 			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'Plane Altitude',b'feet',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
 			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'Plane Latitude',b'degrees',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
 			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'Plane Longitude',b'degrees',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
-			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'AIRSPEED INDICATED',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			#self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'AIRSPEED INDICATED',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'AIRSPEED TRUE',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
 			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'LIGHT LANDING',b'bool',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'SIM ON GROUND',b'bool',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
 			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'HEADING INDICATOR',b'radians',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
 				
 		retval = self.dll.RequestDataOnSimObject(
@@ -433,7 +435,8 @@ class SimConnect:
 		
 		if self.DEFINITION_AIRSPEED is None:
 			self.DEFINITION_AIRSPEED = self.new_def_id()
-			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_AIRSPEED.value,b'AIRSPEED INDICATED',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			#self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_AIRSPEED.value,b'AIRSPEED INDICATED',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_AIRSPEED.value,b'AIRSPEED TRUE',b'knots',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
 		
 		pyarr = list([airspeed])
 		dataarray = (ctypes.c_double * len(pyarr))(*pyarr)

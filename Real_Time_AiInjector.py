@@ -334,7 +334,6 @@ class Common:
                 if Common.Skip_injection % 5 != 0:
                   Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
                   Arrival.Arrival_Index += 1
-                  Arrival.Check_Traffic_MinSeparation()
               else:
                 print("Arrival injection Completed at Departure airport")
               Common.Skip_injection += 1 
@@ -426,6 +425,7 @@ class Common:
       
       if Common.Shift_Src_Cruise  == False:
         Arrival.Check_Traffic_onRunway_Arrival()
+        Arrival.Check_Traffic_MinSeparation()
       
       time.sleep(2)
 
@@ -1188,7 +1188,8 @@ class Arrival:
       Airspeed = 0.0
       Landing_light = 0.0
       ON_Ground = 0.0
-      SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Req_Id,Obj_Id]
+      Heading = 0.0
+      SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Heading,Req_Id,Obj_Id]
       try:
         flt_plan = Arrival.Create_flight_plan_arr(Src,Des,RW)
         Livery_name = Common.Get_flight_match(Call,Type)
@@ -1279,19 +1280,18 @@ class Arrival:
                 bearing = math.atan2(math.sin(lon2 - lon1) * math.cos(lat2), math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(lon2 - lon1))
                 bearing2_to_1 = (math.degrees(bearing) + 360) % 360
                 
-                required_relative_speed = (MIN_SEPARATION - separation) * 2  # Increase the reduction factor
-                speed_1st_aircraft = 0
+                required_relative_speed = (MIN_SEPARATION - separation) * 36  # Increase the reduction factor
                 # Example of speed adjustment if separation is too small (adjust as needed)
                 if separation < MIN_SEPARATION:
                   if abs(bearing1_to_2 - heading1) < 45:  # Aircraft 2 is ahead of Aircraft 1 if bearing matches heading
-                      speed_required = max(150,speed2 - required_relative_speed)
+                      speed_required = max(130,int(speed2 - required_relative_speed))
                       sm.AIAircraftAirspeed(df.iloc[i]['Obj_Id'],speed_required)
-                      #print(f"Aircraft {df.iloc[j]['Call']} is ahead of Aircraft {df.iloc[i]['Call']} required airspeed adjustment: {speed2_required} km/h  separation: {separation} km")
+                      #print(f"Aircraft {df.iloc[j]['Call']} is ahead of Aircraft {df.iloc[i]['Call']} required airspeed adjustment: {speed_required} km/h  separation: {separation} km")
                   
                   elif abs(bearing2_to_1 - heading2) < 45:  # Aircraft 1 is ahead of Aircraft 2 if bearing matches heading
-                      speed_required = max(150,speed1 - required_relative_speed)
+                      speed_required = max(130,int(speed1 - required_relative_speed))
                       sm.AIAircraftAirspeed(df.iloc[j]['Obj_Id'],speed_required)
-                      #print(f"Aircraft {df.iloc[i]['Call']} is ahead of Aircraft {df.iloc[j]['Call']} required airspeed adjustment: {speed2_required} km/h  separation: {separation} km")
+                      #print(f"Aircraft {df.iloc[i]['Call']} is ahead of Aircraft {df.iloc[j]['Call']} required airspeed adjustment: {speed_required} km/h  separation: {separation} km")
                     
 
 class Departure:
