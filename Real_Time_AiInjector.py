@@ -20,6 +20,8 @@ from Sim_Connect_Custom.SimConnect import SimConnect
 import json
 import requests
 import config
+from haversine import haversine, Unit
+import math
 
 
 warnings.filterwarnings('ignore')
@@ -46,6 +48,7 @@ GROUND_INJECTION_TIME_DEP = 2
 CRUISE_INJECTION_TIME = 5
 SPWAN_DIST = 200
 SPWAN_ALTITUDE = 20000
+MIN_SEPARATION = 10 #KM
 
 current_dir = os.getcwd()
 
@@ -331,6 +334,7 @@ class Common:
                 if Common.Skip_injection % 5 != 0:
                   Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
                   Arrival.Arrival_Index += 1
+                  Arrival.Check_Traffic_MinSeparation()
               else:
                 print("Arrival injection Completed at Departure airport")
               Common.Skip_injection += 1 
@@ -1238,12 +1242,57 @@ class Arrival:
       
       try:
         if float(Airspeed) < 200.0 and int(Landing_light) == 1 and int(ON_Ground) == 1:
-          final_speed = float(Airspeed) - 50
+          if float(Airspeed) < 100:
+            final_speed = float(Airspeed) - 30
+          else:
+            final_speed = float(Airspeed) - 50
           if final_speed < 50:
             final_speed = 50
           sm.AIAircraftAirspeed(flight["Obj_Id"],final_speed)
       except:
         print("Unable to set speed of aircraft on runway")
+
+
+  def Check_Traffic_MinSeparation():
+    df = SimConnect.MSFS_AI_Arrival_Traffic
+    for i in range(len(df)):
+      for j in range(i + 1, len(df)):  # Avoid double calculation
+        heading1 = int(df.iloc[i]['Heading'])
+        heading2 = int(df.iloc[j]['Heading'])
+        # Use a tolerance to compare headings
+        if abs(heading1 - heading2) < 20:  # 10 degrees tolerance for heading comparison
+            if df.iloc[i]["ON_Ground"] == 0 and df.iloc[j]["ON_Ground"] == 0:
+                lat1, lon1 = df.iloc[i][['Cur_Lat', 'Cur_Log']]
+                lat2, lon2 = df.iloc[j][['Cur_Lat', 'Cur_Log']]
+                speed1, speed2 = df.iloc[i]['Airspeed'], df.iloc[j]['Airspeed']
+                
+                # Calculate horizontal separation (distance) between the two aircraft
+                separation = haversine((lat1, lon1), (lat2, lon2))
+                
+                # Calculate the bearing from aircraft 1 to aircraft 2
+                lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+                bearing = math.atan2(math.sin(lon2 - lon1) * math.cos(lat2), math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(lon2 - lon1))
+                bearing1_to_2 = (math.degrees(bearing) + 360) % 360
+                
+                # Calculate the bearing from aircraft 2 to aircraft 1
+                lat1, lon1, lat2, lon2 = map(math.radians, [lat2, lon2, lat1, lon1])
+                bearing = math.atan2(math.sin(lon2 - lon1) * math.cos(lat2), math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(lon2 - lon1))
+                bearing2_to_1 = (math.degrees(bearing) + 360) % 360
+                
+                required_relative_speed = (MIN_SEPARATION - separation) * 2  # Increase the reduction factor
+                speed_1st_aircraft = 0
+                # Example of speed adjustment if separation is too small (adjust as needed)
+                if separation < MIN_SEPARATION:
+                  if abs(bearing1_to_2 - heading1) < 45:  # Aircraft 2 is ahead of Aircraft 1 if bearing matches heading
+                      speed_required = max(150,speed2 - required_relative_speed)
+                      sm.AIAircraftAirspeed(df.iloc[i]['Obj_Id'],speed_required)
+                      #print(f"Aircraft {df.iloc[j]['Call']} is ahead of Aircraft {df.iloc[i]['Call']} required airspeed adjustment: {speed2_required} km/h  separation: {separation} km")
+                  
+                  elif abs(bearing2_to_1 - heading2) < 45:  # Aircraft 1 is ahead of Aircraft 2 if bearing matches heading
+                      speed_required = max(150,speed1 - required_relative_speed)
+                      sm.AIAircraftAirspeed(df.iloc[j]['Obj_Id'],speed_required)
+                      #print(f"Aircraft {df.iloc[i]['Call']} is ahead of Aircraft {df.iloc[j]['Call']} required airspeed adjustment: {speed2_required} km/h  separation: {separation} km")
+                    
 
 class Departure:
   
