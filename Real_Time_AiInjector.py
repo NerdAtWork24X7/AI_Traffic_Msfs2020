@@ -151,12 +151,12 @@ class Common:
     return f"{lat_dms},{lon_dms},{altitude_str}"
 
    
-  def get_close_waypoint(src_lat,src_lon,des,des_lat,des_lon,max_dis):
+  def get_close_waypoint(src_lat,src_lon,des,des_lat,des_lon,max_dis,min_dis):
 
     qry_str = f"""SELECT "_rowid_",* FROM "main"."waypoint" WHERE "airport_ident" LIKE '%""" + des +"""%'"""
     with Common.engine_fldatabase.connect() as conn:
       des_waypoint_df = pd.read_sql(sql=qry_str, con=conn.connection)
-  
+
     point_src = (src_lat,src_lon) 
     point_des = (des_lat,des_lon) 
     df_close_waypoint = pd.DataFrame()
@@ -165,10 +165,10 @@ class Common:
       point2 = (waypoint["laty"], waypoint["lonx"])
       Cur_Dis = geodesic(point_src, point2).km
       Des_Dis = geodesic(point_des, point2).km
-      if Cur_Dis < pre_dis and Des_Dis < max_dis and Des_Dis > 50:
+      if Cur_Dis < pre_dis and Des_Dis < max_dis and Des_Dis > min_dis:
         df_close_waypoint = waypoint
         pre_dis = Cur_Dis
-  
+    
     return df_close_waypoint
  
 
@@ -1031,14 +1031,7 @@ class Arrival:
       des_df = pd.read_sql(sql=qry_str, con=conn.connection) 
     des_name = des_df.iloc[-1]["name"] 
     des_Pos =  Common.format_coordinates(float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),float(des_df.iloc[-1]["altitude"]))
-    
-    max_dist = 100
-    df_close_waypoint = Common.get_close_waypoint(float(src_df.iloc[-1]["laty"]),float(src_df.iloc[-1]["lonx"]),des,float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),max_dist)
-  
-    src_waypoint_Pos = Common.format_coordinates(float(df_close_waypoint["laty"]),float(df_close_waypoint["lonx"]),7000)
-    src_waypoint_id = df_close_waypoint["ident"]
-    src_waypoint_reg = df_close_waypoint["region"]
-    
+       
     #if Arrival.Arrival_Index < 10:
     #    crusing_alt = str(4000 + (500 * Arrival.Arrival_Index))
     #else :
@@ -1081,7 +1074,8 @@ class Arrival:
               App_Name = app["fix_ident"]
               prev_distance = distance
       
-  
+    
+    first_way_point = 0
     if len(Cur_app_leg_df) > 0:
       for index, app_leg in Cur_app_leg_df.iterrows():
         with Common.engine_fldatabase.connect() as conn:
@@ -1091,6 +1085,10 @@ class Arrival:
             point2 = (way_df.iloc[-1]["laty"], way_df.iloc[-1]["lonx"]) 
             distance = geodesic((float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"])), point2).km
             if distance < 100 :
+              if first_way_point == 0:
+                first_way_lat = float(way_df["laty"].iloc[-1])
+                first_way_lon = float(way_df["lonx"].iloc[-1])
+                first_way_point = 1
               app_waypoint_Pos = Common.format_coordinates(float(way_df["laty"].iloc[-1]),float(way_df["lonx"].iloc[-1]),float(5000))  
               approach_string += """        <ATCWaypoint id=\"""" + app_leg["fix_ident"] + """\">
                     <ATCWaypointType>Intersection</ATCWaypointType>
@@ -1108,6 +1106,27 @@ class Arrival:
                         <ICAOAirport>""" + des + """</ICAOAirport>
                     </ICAO>
                 </ATCWaypoint>\n"""
+
+    if first_way_point == 1:
+
+      with Common.engine_fldatabase.connect() as conn:
+          qry_str = '''SELECT"_rowid_",* FROM "main"."waypoint" WHERE "laty" > '''  + str(int(first_way_lat)-3) + ''' AND "laty" < '''  + str(int(first_way_lat) + 3) + ''' AND "lonx" > '''  + str(int(first_way_lon)-3) + '''  AND "lonx" < '''  + str(int(first_way_lon) + 3) + ''' '''
+          way_df = pd.read_sql(sql=qry_str, con=conn.connection)
+    
+      point1 = (first_way_lat,first_way_lon)
+      df_nearest_waypoint = pd.DataFrame()
+      pre_dis = 9999999999999999
+      for waypoint in way_df.iterrows():
+          point2 = (float(waypoint[1]["laty"]),float(waypoint[1]["lonx"]))
+          Dis = geodesic(point1, point2).km
+          if Dis< pre_dis and Dis > 5 and Dis < 100:
+            df_nearest_waypoint = waypoint
+            pre_dis = Dis
+
+      src_waypoint_Pos = Common.format_coordinates(float(df_nearest_waypoint[1]["laty"]),float(df_nearest_waypoint[1]["lonx"]),float(7000))
+      src_waypoint_id = df_nearest_waypoint[1]["ident"]
+      src_waypoint_reg = df_nearest_waypoint[1]["region"]
+      first_way_point = 2
 
 
     fln_plan = """<?xml version="1.0" encoding="UTF-8"?> \
@@ -1135,9 +1154,19 @@ class Arrival:
             <ICAO>
                 <ICAOIdent>"""+src + """</ICAOIdent>
             </ICAO>
-        </ATCWaypoint>\n""" +  approach_string + """        <ATCWaypoint id=\""""+ des +"""\">
+        </ATCWaypoint>\n"""
+    if first_way_point == 2:
+        fln_plan +="""<ATCWaypoint id=\""""+src_waypoint_id+"""\">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>"""+src_waypoint_Pos+"""</WorldPosition>
+            <ICAO>
+                <ICAORegion>"""+src_waypoint_reg+"""</ICAORegion>
+                <ICAOIdent>"""+src_waypoint_id+"""</ICAOIdent>
+            </ICAO>"""
+    fln_plan +=""" </ATCWaypoint>\n""" +  approach_string + """        <ATCWaypoint id=\""""+ des +"""\">
             <ATCWaypointType>Airport</ATCWaypointType>
             <WorldPosition>"""+des_Pos+"""</WorldPosition>
+            <ApproachTypeFP>ILS</ApproachTypeFP>
             <RunwayNumberFP>"""+RW_num+"""</RunwayNumberFP>\n"""
     if len(RW_des) > 0:
       fln_plan +="""            <RunwayDesignatorFP>"""+RW_designa+"""</RunwayDesignatorFP>\n"""
@@ -1626,6 +1655,6 @@ class Departure:
     #print(SimConnect.MSFS_AI_Departure_Traffic)
 
 
-Common.Run()
+#Common.Run()
 
-#Arrival.Create_flight_plan_arr("LFPG","VABB","27")
+Arrival.Create_flight_plan_arr("OMAA","VABB","27")
