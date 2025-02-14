@@ -5,9 +5,17 @@ This project reads real-time flight data from Flight Radar 24 and injects it int
 
 ## Features
 - Real-time AI traffic injection based on Flight Radar 24 data
+- Arrivals and departures based on STAR and SID
+- Min separation of 5 NM during approach reducing go arounds 
+- Quick roll off during landing by adjusting speed when airplane on runway
 - Customizable parameters for traffic injection
-- Integration with AIFlow and AIGround for managing AI landings and departures
 - Inject Traffic based on location of user (Departure, Cruise, Destination)
+- Injects Traffic only at user location to reduce CPU load
+- ATC always active 
+- Uses simbrief to get active runway based on headwind
+- Model matching with FSLTL and FSTraffic 
+- Remove traffic which is outside user visible distance to reduce CPU Load
+
 
 ## Prerequisites
 - Python 3.x
@@ -37,7 +45,7 @@ This project reads real-time flight data from Flight Radar 24 and injects it int
       - CRUISE_ALTITUDE = 10000
       - SRC_GROUND_RANGE = 50
       - DES_GROUND_RANGE = 100
-      - GROUND_INJECTION_TIME_ARR = 3
+      - GROUND_INJECTION_TIME_ARR = 2
       - GROUND_INJECTION_TIME_DEP = 2
       - CRUISE_INJECTION_TIME = 5
       - SPWAN_DIST = 200
@@ -56,12 +64,12 @@ This project reads real-time flight data from Flight Radar 24 and injects it int
 Thanks to
  - LittleNavMap database
  - FSLT base package
+ - FSTraffic liveries
  - SimConnectPython
 
 
 ## Note:
-- Ensure you are at the departure airport before starting the script.
-- Use the script with AIFlow and AIGround to manage AI landings and departures from specific runways.
+- Ensure you are at the departure airport before starting the script with flight generated in simbrief
 - Use data from Flight Radar 24 responsibly to avoid connection issues.
 - This project is for educational purposes.
 
