@@ -36,14 +36,14 @@ SRC_ACTIVE_RUNWAY = ""
 DES_ACTIVE_RUNWAY = ""
 
 USE_FSTRAFFIC_LIVERY = True
-MAX_ARRIVAL_AI_FLIGHTS = 20
-MAX_DEPARTURE_AI_FLIGHTS = 20
-MAX_CRUISE_AI_FLIGHTS = 20
-MAX_PARKED_AI_FLIGHTS = 40
+MAX_ARRIVAL_AI_FLIGHTS = 30
+MAX_DEPARTURE_AI_FLIGHTS = 30
+MAX_CRUISE_AI_FLIGHTS = 30
+MAX_PARKED_AI_FLIGHTS = 50
 CRUISE_ALTITUDE = 10000
 SRC_GROUND_RANGE = 50
-DES_GROUND_RANGE = 100
-GROUND_INJECTION_TIME_ARR = 2
+DES_GROUND_RANGE = 200
+GROUND_INJECTION_TIME_ARR = 1
 GROUND_INJECTION_TIME_DEP = 2
 CRUISE_INJECTION_TIME = 5
 SPWAN_DIST = 200
@@ -84,6 +84,8 @@ class Common:
   Shift_Cruise_Des = False
 
   Skip_injection = 1 # For Flight spacing
+
+  State_Machine = 0
   
 
   def Get_Flight_plan():
@@ -307,7 +309,8 @@ class Common:
         # if User aircraft within 50KM of Departure airport
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SRC_GROUND_RANGE:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
-          Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)    
+          Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)  
+          Common.State_Machine = 1  
           
           if (Fr24_Dep_len == 0 or Fr24_Arr_len == 0) and Common.Retry_SRC < 2:
             print("--------------At Departure Airport-------------------") 
@@ -341,7 +344,8 @@ class Common:
         # if User aircraft within 100KM of Arrival airport  
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < DES_GROUND_RANGE:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
-          Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)  
+          Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)
+          Common.State_Machine = 3
           
           if ((Fr24_Dep_len == 0 or Fr24_Arr_len == 0) or (Common.Shift_Cruise_Des == False and Common.Shift_Src_Cruise == True)) and Common.Retry_DES < 2:
             print("--------------At Destination Airport-------------------")   
@@ -386,6 +390,7 @@ class Common:
         
         # if User aircraft is Crusing
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"] > CRUISE_ALTITUDE and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] > DES_GROUND_RANGE:   
+          Common.State_Machine = 2
           if Common.Shift_Src_Cruise == False:
             print("--------------Crusing------------------")  
             Cruise.Create_Cruise_Traffic_database_Arrival_des(DES_AIRPORT_IACO,100)
@@ -420,7 +425,10 @@ class Common:
         prev_min = min
       
       if Common.Shift_Src_Cruise  == False:
-        Arrival.Check_Traffic_onRunway_Arrival()
+        if Common.State_Machine == 1:
+          Arrival.Check_Traffic_onRunway_Arrival(SRC_ACTIVE_RUNWAY)
+        elif Common.State_Machine == 3:
+          Arrival.Check_Traffic_onRunway_Arrival(DES_ACTIVE_RUNWAY)
         Arrival.Check_Traffic_MinSeparation()
       
       time.sleep(2)
@@ -719,8 +727,17 @@ class Cruise:
     for waypoint in way_df.iterrows():
         point2 = (float(waypoint[1]["laty"]),float(waypoint[1]["lonx"]))
         Dis = geodesic(point1, point2).km
-        if Dis > 2 and Dis < 100:
+        if Dis > 2 and Dis < 50:
           df_nearest_waypoint_list.append(waypoint)
+    
+    if len(df_nearest_waypoint_list) < 5:
+      df_nearest_waypoint = pd.DataFrame()
+      df_nearest_waypoint_list = []
+      for waypoint in way_df.iterrows():
+          point2 = (float(waypoint[1]["laty"]),float(waypoint[1]["lonx"]))
+          Dis = geodesic(point1, point2).km
+          if Dis > 2 and Dis < 100:
+            df_nearest_waypoint_list.append(waypoint)
     
     df_nearest_waypoint = random.choice(df_nearest_waypoint_list) 
     waypoint_Pos = Common.format_coordinates(float(df_nearest_waypoint[1]["laty"]),float(df_nearest_waypoint[1]["lonx"]),float(crusing_alt))
@@ -994,7 +1011,7 @@ class Arrival:
           if len(way_df) > 0 :
             point2 = (way_df.iloc[-1]["laty"], way_df.iloc[-1]["lonx"]) 
             distance = geodesic((float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"])), point2).km
-            if distance < 100 :
+            if distance < 100 and app_leg["fix_type"] != "V":
               if first_way_point == 0:
                 first_way_lat = float(way_df["laty"].iloc[-1])
                 first_way_lon = float(way_df["lonx"].iloc[-1])
@@ -1004,19 +1021,13 @@ class Arrival:
             <ATCWaypointType>Intersection</ATCWaypointType>
             <WorldPosition>"""+app_waypoint_Pos+"""</WorldPosition>
             <SpeedMaxFP>-1</SpeedMaxFP>
-            <ArrivalFP>"""+App_Name+"""</ArrivalFP>
-            <RunwayNumberFP>"""+RW_num+"""</RunwayNumberFP>\n"""
-              if len(RW_des) > 0:
-                approach_string +="""            <RunwayDesignatorFP>"""+RW_designa+"""</RunwayDesignatorFP>\n"""
-              
-              approach_string += """            <ICAO>
+            <ICAO>
                 <ICAORegion>""" + app_leg["fix_region"] + """</ICAORegion>
                 <ICAOIdent>""" + app_leg["fix_ident"] + """</ICAOIdent>
-                <ICAOAirport>""" + des + """</ICAOAirport>
             </ICAO>
         </ATCWaypoint>\n"""
 
-    if first_way_point == 1:
+    if first_way_point == 1 and len(Cur_app_leg_df) < 2:
 
       with Common.engine_waypoint_db.connect() as conn:
           qry_str = '''SELECT"_rowid_",* FROM "main"."waypoint" WHERE "laty" > '''  + str(int(first_way_lat)-3) + ''' AND "laty" < '''  + str(int(first_way_lat) + 3) + ''' AND "lonx" > '''  + str(int(first_way_lon)-3) + '''  AND "lonx" < '''  + str(int(first_way_lon) + 3) + ''' AND "type" LIKE '%RNAV%' '''
@@ -1097,7 +1108,6 @@ class Arrival:
         <ATCWaypoint id=\""""+ des +"""\">
             <ATCWaypointType>Airport</ATCWaypointType>
             <WorldPosition>"""+des_Pos+"""</WorldPosition>
-            <ApproachTypeFP>ILS</ApproachTypeFP>
             <RunwayNumberFP>"""+RW_num+"""</RunwayNumberFP>\n"""
     if len(RW_des) > 0:
       fln_plan +="""            <RunwayDesignatorFP>"""+RW_designa+"""</RunwayDesignatorFP>\n"""
@@ -1149,7 +1159,8 @@ class Arrival:
       Landing_light = 0.0
       ON_Ground = 0.0
       Heading = 0.0
-      SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Heading,Req_Id,Obj_Id]
+      Gear = 0.0
+      SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Heading,Gear,Req_Id,Obj_Id]
       try:
         flt_plan = Arrival.Create_flight_plan_arr(Src,Des,RW)
         Livery_name = Common.Get_flight_match(Call,Type)
@@ -1158,7 +1169,7 @@ class Arrival:
         Common.Global_req_id+=1
         time.sleep(2)
         if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
-            sm.AIAircraftAirspeed(SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0],400)
+            sm.AIAircraftAirspeed(SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0],500)
       except:
         print("Cannot create Arrival flight plan")
       #print(flt_plan)
@@ -1169,9 +1180,6 @@ class Arrival:
     point1  = (SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"])
     Altitude1 = SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"]
     for index, flight in SimConnect.MSFS_AI_Arrival_Traffic.iterrows():
-      #print(flight)
-      sm.AIAircraft_GetPosition(flight["Req_Id"],flight["Obj_Id"])
-      time.sleep(1)
       try:
         if flight["Cur_Lat"] != 0.0 and flight["Cur_Log"] != 0.0:
           #Check Dist
@@ -1184,17 +1192,17 @@ class Arrival:
             print("Arrival Remove----" + flight["Call"] + " " + flight["Type"] + " Distance " + str(dis) + " Altitude diff" + str(Alt))
             sm.AIRemoveObject(flight["Obj_Id"],flight["Req_Id"])
             SimConnect.MSFS_AI_Arrival_Traffic = SimConnect.MSFS_AI_Arrival_Traffic[SimConnect.MSFS_AI_Arrival_Traffic['Obj_Id'] != flight["Obj_Id"]]
-            time.sleep(2)
       except:
         print("Error: Arrival " + str(flight))
     SimConnect.MSFS_AI_Arrival_Traffic = SimConnect.MSFS_AI_Arrival_Traffic.reset_index(drop=True)
     #print(SimConnect.MSFS_AI_Arrival_Traffic)
 
-  def Check_Traffic_onRunway_Arrival():
+  def Check_Traffic_onRunway_Arrival(RW):
     for index, flight in SimConnect.MSFS_AI_Arrival_Traffic.iterrows():
       sm.AIAircraft_GetPosition(flight["Req_Id"],flight["Obj_Id"])
       Call = flight["Call"]
-      if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Landing_light"].values[0] == 0:
+      if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Gear"].values[0] == 0 or \
+      SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Landing_light"].values[0] == 0:
         continue
       time.sleep(1)
       Airspeed = SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Airspeed"].values[0]
