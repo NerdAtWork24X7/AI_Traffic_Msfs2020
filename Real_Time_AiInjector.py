@@ -36,14 +36,14 @@ SRC_ACTIVE_RUNWAY = ""
 DES_ACTIVE_RUNWAY = ""
 
 USE_FSTRAFFIC_LIVERY = True
-MAX_ARRIVAL_AI_FLIGHTS = 20
-MAX_DEPARTURE_AI_FLIGHTS = 20
-MAX_CRUISE_AI_FLIGHTS = 20
-MAX_PARKED_AI_FLIGHTS = 40
+MAX_ARRIVAL_AI_FLIGHTS = 30
+MAX_DEPARTURE_AI_FLIGHTS = 30
+MAX_CRUISE_AI_FLIGHTS = 30
+MAX_PARKED_AI_FLIGHTS = 50
 CRUISE_ALTITUDE = 10000
 SRC_GROUND_RANGE = 50
-DES_GROUND_RANGE = 100
-GROUND_INJECTION_TIME_ARR = 2
+DES_GROUND_RANGE = 200
+GROUND_INJECTION_TIME_ARR = 1
 GROUND_INJECTION_TIME_DEP = 2
 CRUISE_INJECTION_TIME = 5
 SPWAN_DIST = 200
@@ -65,7 +65,10 @@ class Common:
   chrome_options.add_argument('--enable-unsafe-swiftshader')
   chrome_options.add_argument('log-level=3')
    
-  engine_fldatabase = create_engine('sqlite:///little_navmap_msfs.sqlite')
+  engine_airport_db = create_engine('sqlite:///./Database/Airport.sqlite')
+  engine_airline_db = create_engine('sqlite:///./Database/airline_icao.sqlite')
+  engine_approach_db = create_engine('sqlite:///./Database/Approach.sqlite')
+  engine_waypoint_db = create_engine('sqlite:///./Database/Waypoints.sqlite')
 
   Global_req_id = 1000
   
@@ -81,6 +84,8 @@ class Common:
   Shift_Cruise_Des = False
 
   Skip_injection = 1 # For Flight spacing
+
+  State_Machine = 0
   
 
   def Get_Flight_plan():
@@ -106,7 +111,7 @@ class Common:
      
   def Get_Timezone(src,specific_time_str):
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+src+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_airport_db.connect() as conn:
       src_df = pd.read_sql(sql=qry_str, con=conn.connection) 
     
     lon = src_df.iloc[-1]["lonx"]
@@ -154,7 +159,7 @@ class Common:
   def get_close_waypoint(src_lat,src_lon,des,des_lat,des_lon,max_dis,min_dis):
 
     qry_str = f"""SELECT "_rowid_",* FROM "main"."waypoint" WHERE "airport_ident" LIKE '%""" + des +"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_waypoint_db.connect() as conn:
       des_waypoint_df = pd.read_sql(sql=qry_str, con=conn.connection)
 
     point_src = (src_lat,src_lon) 
@@ -180,8 +185,7 @@ class Common:
     livery_found = False
     try: 
       IATA_call = callsign[:2]
-      engine_airline_icao = create_engine('sqlite:///airline_icao.sqlite')
-      with engine_airline_icao.connect() as conn:
+      with Common.engine_airline_db.connect() as conn:
         qry_str = '''SELECT "_rowid_",* FROM "main"."mytable" WHERE "iata" LIKE '%'''+IATA_call+'''%' '''
         src_df = pd.read_sql(sql=qry_str, con=conn.connection)
         icao = src_df.iloc[0]["icao"]
@@ -262,7 +266,7 @@ class Common:
     Common.Get_Flight_plan()
 
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+SRC_AIRPORT_IACO+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_airport_db.connect() as conn:
       src_df = pd.read_sql(sql=qry_str, con=conn.connection) 
     
     Lat = src_df.iloc[-1]["laty"]
@@ -271,7 +275,7 @@ class Common:
     Common.Src_Airport.loc[-1] = [SRC_AIRPORT_IACO,Lat,Lon,Altitude] 
     
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+DES_AIRPORT_IACO+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_airport_db.connect() as conn:
       des_df = pd.read_sql(sql=qry_str, con=conn.connection) 
     
     if len(src_df["iata"].iloc[-1]) == 0: 
@@ -305,18 +309,17 @@ class Common:
         # if User aircraft within 50KM of Departure airport
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SRC_GROUND_RANGE:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
-          Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)    
+          Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)  
+          Common.State_Machine = 1  
           
           if (Fr24_Dep_len == 0 or Fr24_Arr_len == 0) and Common.Retry_SRC < 2:
             print("--------------At Departure Airport-------------------") 
             Departure.Get_Departure(SRC_AIRPORT_IACO,100)
             Departure.Inject_Parked_Traffic()
-            Departure.Get_SID(SRC_AIRPORT_IACO,SRC_ACTIVE_RUNWAY)
-            Departure.Assign_Flt_plan()
+            Departure.Assign_Flt_plan(SRC_ACTIVE_RUNWAY)
             Departure.Departure_Index += 1 
             
             Arrival.Get_Arrival(SRC_AIRPORT_IACO,100)
-            #Arrival.Get_STAR(SRC_AIRPORT_IACO,SRC_ACTIVE_RUNWAY)
             Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
             Arrival.Arrival_Index += 1
             Common.Retry_SRC += 1             #Retry only once if Flight Radar data is available
@@ -324,7 +327,7 @@ class Common:
           else:
             if min % GROUND_INJECTION_TIME_DEP == 0 and Departure.Departure_Index < MAX_DEPARTURE_AI_FLIGHTS:   
               if Departure.Departure_Index < Fr24_Dep_len:
-                  Departure.Assign_Flt_plan()
+                  Departure.Assign_Flt_plan(SRC_ACTIVE_RUNWAY)
                   Departure.Departure_Index += 1
               else:
                 print("Departure injection Completed at Departure airport")
@@ -341,7 +344,8 @@ class Common:
         # if User aircraft within 100KM of Arrival airport  
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < DES_GROUND_RANGE:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
-          Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)  
+          Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)
+          Common.State_Machine = 3
           
           if ((Fr24_Dep_len == 0 or Fr24_Arr_len == 0) or (Common.Shift_Cruise_Des == False and Common.Shift_Src_Cruise == True)) and Common.Retry_DES < 2:
             print("--------------At Destination Airport-------------------")   
@@ -351,17 +355,13 @@ class Common:
             Arrival.Arrival_Index = 0
             Departure.FR24_Departure_Traffic = pd.DataFrame(columns=['Estimate_time', 'Scheduled_time', "Call","des", "Type","Reg",'Ocio',"Src_ICAO","Des_ICAO","Local_depart_time"])
             Departure.Departure_Index = 0
-            Departure.departure_string = ""
-            Arrival.approach_string = ""
-            
+           
             Departure.Get_Departure(DES_AIRPORT_IACO,100)
             Departure.Inject_Parked_Traffic()
-            Departure.Get_SID(DES_AIRPORT_IACO,DES_ACTIVE_RUNWAY)
-            Departure.Assign_Flt_plan()
+            Departure.Assign_Flt_plan(DES_ACTIVE_RUNWAY)
             Departure.Departure_Index += 1
 
             Arrival.Get_Arrival(DES_AIRPORT_IACO,100)
-            #Arrival.Get_STAR(DES_AIRPORT_IACO,DES_ACTIVE_RUNWAY)
             Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
             Arrival.Arrival_Index += 1
           
@@ -370,7 +370,7 @@ class Common:
           else:
             if min % GROUND_INJECTION_TIME_DEP == 0 and Departure.Departure_Index < MAX_DEPARTURE_AI_FLIGHTS:
               if Departure.Departure_Index < Fr24_Dep_len:
-                  Departure.Assign_Flt_plan()
+                  Departure.Assign_Flt_plan(DES_ACTIVE_RUNWAY)
                   Departure.Departure_Index += 1
               else:
                 print("Departure injection Completed at destination airport")
@@ -390,6 +390,7 @@ class Common:
         
         # if User aircraft is Crusing
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"] > CRUISE_ALTITUDE and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] > DES_GROUND_RANGE:   
+          Common.State_Machine = 2
           if Common.Shift_Src_Cruise == False:
             print("--------------Crusing------------------")  
             Cruise.Create_Cruise_Traffic_database_Arrival_des(DES_AIRPORT_IACO,100)
@@ -424,7 +425,10 @@ class Common:
         prev_min = min
       
       if Common.Shift_Src_Cruise  == False:
-        Arrival.Check_Traffic_onRunway_Arrival()
+        if Common.State_Machine == 1:
+          Arrival.Check_Traffic_onRunway_Arrival(SRC_ACTIVE_RUNWAY)
+        elif Common.State_Machine == 3:
+          Arrival.Check_Traffic_onRunway_Arrival(DES_ACTIVE_RUNWAY)
         Arrival.Check_Traffic_MinSeparation()
       
       time.sleep(2)
@@ -443,7 +447,7 @@ class Cruise:
     print("------------Get Cruise Arrival FR24 Traffic---------------------")
 
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "icao" LIKE '%"""+airport+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_airport_db.connect() as conn:
       des_air = pd.read_sql(sql=qry_str, con=conn.connection)
     airport_iata = des_air["iata"].iloc[-1]
     
@@ -476,7 +480,7 @@ class Cruise:
               Src =  flight_info_list[3]
               Type =  flight_info_list[4]             
               qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+re.search(r'\((.*?)\)', Src).group(1).upper()+"""%'"""
-              with Common.engine_fldatabase.connect() as conn:
+              with Common.engine_airport_db.connect() as conn:
                   src_air = pd.read_sql(sql=qry_str, con=conn.connection)
               
               Src_ICAO = src_air["icao"].iloc[-1]
@@ -499,7 +503,7 @@ class Cruise:
     print("------------Get Cruise Arrival FR24 Traffic---------------------")
 
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "icao" LIKE '%"""+airport+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_airport_db.connect() as conn:
       des_air = pd.read_sql(sql=qry_str, con=conn.connection)
     airport_iata = des_air["iata"].iloc[-1]
     
@@ -532,7 +536,7 @@ class Cruise:
               Src =  flight_info_list[3]
               Type =  flight_info_list[4]             
               qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+re.search(r'\((.*?)\)', Src).group(1).upper()+"""%'"""
-              with Common.engine_fldatabase.connect() as conn:
+              with Common.engine_airport_db.connect() as conn:
                   src_air = pd.read_sql(sql=qry_str, con=conn.connection)
               
               Src_ICAO = src_air["icao"].iloc[-1]
@@ -577,12 +581,12 @@ class Cruise:
             Speed = float(flight["spd"])
              
             qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+flight["from"].split(" ")[0]+"""%'"""
-            with Common.engine_fldatabase.connect() as conn:
+            with Common.engine_airport_db.connect() as conn:
               src_air = pd.read_sql(sql=qry_str, con=conn.connection)
             Src_ICAO = src_air["icao"].iloc[-1]
             
             qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+flight["to"].split(" ")[0]+"""%'"""
-            with Common.engine_fldatabase.connect() as conn:
+            with Common.engine_airport_db.connect() as conn:
               des_air = pd.read_sql(sql=qry_str, con=conn.connection)
             Des_ICAO = des_air["icao"].iloc[-1]
                         
@@ -700,19 +704,19 @@ class Cruise:
   def Create_flt_Plan(Src,Des,Lat,Lon,Speed,crusing_alt):
 
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+Src+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_airport_db.connect() as conn:
       src_df = pd.read_sql(sql=qry_str, con=conn.connection) 
     
     src_name = src_df.iloc[-1]["name"]
     src_Pos = Common.format_coordinates(float(src_df.iloc[-1]["laty"]),float(src_df.iloc[-1]["lonx"]),float(src_df.iloc[-1]["altitude"]))
     
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+Des+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_airport_db.connect() as conn:
       des_df = pd.read_sql(sql=qry_str, con=conn.connection) 
     des_name = des_df.iloc[-1]["name"] 
     des_Pos =  Common.format_coordinates(float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),float(des_df.iloc[-1]["altitude"]))
     
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_waypoint_db.connect() as conn:
       qry_str = '''SELECT"_rowid_",* FROM "main"."waypoint" WHERE "laty" > '''  + str(int(Lat)-3) + ''' AND "laty" < '''  + str(int(Lat) + 3) + ''' AND "lonx" > '''  + str(int(Lon)-3) + '''  AND "lonx" < '''  + str(int(Lon) + 3) + ''' '''
       way_df = pd.read_sql(sql=qry_str, con=conn.connection)
 
@@ -723,8 +727,17 @@ class Cruise:
     for waypoint in way_df.iterrows():
         point2 = (float(waypoint[1]["laty"]),float(waypoint[1]["lonx"]))
         Dis = geodesic(point1, point2).km
-        if Dis > 2 and Dis < 100:
+        if Dis > 2 and Dis < 50:
           df_nearest_waypoint_list.append(waypoint)
+    
+    if len(df_nearest_waypoint_list) < 5:
+      df_nearest_waypoint = pd.DataFrame()
+      df_nearest_waypoint_list = []
+      for waypoint in way_df.iterrows():
+          point2 = (float(waypoint[1]["laty"]),float(waypoint[1]["lonx"]))
+          Dis = geodesic(point1, point2).km
+          if Dis > 2 and Dis < 100:
+            df_nearest_waypoint_list.append(waypoint)
     
     df_nearest_waypoint = random.choice(df_nearest_waypoint_list) 
     waypoint_Pos = Common.format_coordinates(float(df_nearest_waypoint[1]["laty"]),float(df_nearest_waypoint[1]["lonx"]),float(crusing_alt))
@@ -812,7 +825,6 @@ class Arrival:
   ADBS_Arrival_Traffic = pd.DataFrame(columns=[ "Call","Lat","Lon","Altitude","Speed","Reg"])
  
   Arrival_Index = 0
-  approach_string = ""
 
   def Get_Arrival_ADB_S(lat,lon,dist):
     
@@ -851,7 +863,7 @@ class Arrival:
     print("------------Get Arrival FR24 Traffic---------------------")
 
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "icao" LIKE '%"""+airport+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_airport_db.connect() as conn:
       des_air = pd.read_sql(sql=qry_str, con=conn.connection)
     airport_iata = des_air["iata"].iloc[-1]
     
@@ -900,7 +912,7 @@ class Arrival:
               Reg =  flight_info_list[-2]
               
               qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+re.search(r'\((.*?)\)', Src).group(1).upper()+"""%'"""
-              with Common.engine_fldatabase.connect() as conn:
+              with Common.engine_airport_db.connect() as conn:
                   src_air = pd.read_sql(sql=qry_str, con=conn.connection)
               
               Src_ICAO = src_air["icao"].iloc[-1]
@@ -932,102 +944,17 @@ class Arrival:
     driver.quit()
     #time.sleep(5)
 
-  def Get_STAR(airport,RW):
-  
-    with Common.engine_fldatabase.connect() as conn:
-      qry_str = '''SELECT "_rowid_", * FROM "main"."approach" WHERE "airport_ident" LIKE '%'''+airport+'''%' ESCAPE '\\' AND "type" LIKE '%GPS%' ESCAPE '\\' AND "suffix" LIKE '%A%' ESCAPE '\\' AND "runway_name" LIKE '%'''+RW+'''%' ESCAPE '\\'LIMIT 0, 49999;'''
-      src_df = pd.read_sql(sql=qry_str, con=conn.connection)
-
-    
-    qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+airport+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
-      des_df = pd.read_sql(sql=qry_str, con=conn.connection) 
-    
-
-    Max_app_df = pd.DataFrame()
-    prev_distance = 99999999
-    if len(src_df) > 2:
-      for index,app in src_df.iterrows():
-        app_id = app["approach_id"].iloc[-1]
-        
-        with Common.engine_fldatabase.connect() as conn:
-          qry_str = '''SELECT "_rowid_", * FROM "main"."approach_leg" WHERE "approach_id" = "'''+str(app_id) + '''" '''
-          Cur_app = pd.read_sql(sql=qry_str, con=conn.connection)
-          with Common.engine_fldatabase.connect() as conn:
-            qry_str = '''SELECT "_rowid_", * FROM "main"."waypoint" WHERE "ident" LIKE '%'''+Cur_app.iloc[0]["fix_ident"] +'''%' ESCAPE '\\' AND "region" LIKE '%'''+Cur_app.iloc[0]["fix_region"]+'''%' '''
-            way_df = pd.read_sql(sql=qry_str, con=conn.connection)
-            point1 = (float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]))
-            point2 = (way_df.iloc[-1]["laty"], way_df.iloc[-1]["lonx"]) 
-            distance = geodesic(point1, point2).km
-            if distance > 25 and distance < prev_distance:
-              Max_app_df = Cur_app
-              App_Name = app["fix_ident"]
-              prev_distance = distance 
-  
-      try:          
-        Max_app_df.drop(['is_missed', 'type' ,'arinc_descr_code','approach_fix_type','turn_direction','recommended_fix_type', 'rnp',\
-                       'time','theta','recommended_fix_laty','is_true_course','speed_limit_type','recommended_fix_ident','recommended_fix_region','recommended_fix_lonx','is_flyover','course'], axis=1,inplace=True)
-      except:
-        pass       
-    
-    
-    #fill lat and log
-    RW_num =  str(int((re.findall(r'\d+', RW))[0]))
-    RW_des = re.findall(r'[A-Za-z]', RW)
-    
-    if len(RW_des) > 0: 
-      if RW_des[0]== "C":
-        RW_designa = "CENTER"
-      if RW_des[0] == "L":
-        RW_designa = "LEFT"
-      if RW_des[0] == "R":
-        RW_designa = "RIGHT"
-  
-    
-    for index, app_leg in Max_app_df.iterrows():
-      with Common.engine_fldatabase.connect() as conn:
-        qry_str = '''SELECT "_rowid_", * FROM "main"."waypoint" WHERE "ident" LIKE '%'''+app_leg["fix_ident"] +'''%' ESCAPE '\\' AND "region" LIKE '%'''+app_leg["fix_region"]+'''%' '''
-        way_df = pd.read_sql(sql=qry_str, con=conn.connection)
-      if len(way_df) > 0:
-        Max_app_df.loc[index,"fix_lonx"] = way_df["lonx"].iloc[-1]
-        Max_app_df.loc[index,"fix_laty"] = way_df["laty"].iloc[-1]
-        point1 = (float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]))
-        point2 = (way_df["laty"].iloc[-1], way_df["lonx"].iloc[-1]) 
-        distance = geodesic(point1, point2).km
-        Max_app_df.loc[index,"distance"] = distance
-      
-        app_waypoint_Pos = Common.format_coordinates(float(way_df["laty"].iloc[-1]),float(way_df["lonx"].iloc[-1]),float(5000))  
-        Arrival.approach_string += """        <ATCWaypoint id=\"""" + app_leg["fix_ident"] + """\">
-              <ATCWaypointType>Intersection</ATCWaypointType>
-              <WorldPosition>"""+app_waypoint_Pos+"""</WorldPosition>
-              <SpeedMaxFP>-1</SpeedMaxFP>\n"""
-                 
-        Arrival.approach_string +="""            <ArrivalFP>"""+App_Name+"""</ArrivalFP>
-          <RunwayNumberFP>"""+RW_num+"""</RunwayNumberFP>\n"""
-        if len(RW_des) > 0:
-          Arrival.approach_string +="""            <RunwayDesignatorFP>"""+RW_designa+"""</RunwayDesignatorFP>\n"""
-        
-        Arrival.approach_string += """            <ICAO>
-                  <ICAORegion>""" + app_leg["fix_region"] + """</ICAORegion>
-                  <ICAOIdent>""" + app_leg["fix_ident"] + """</ICAOIdent>
-                  <ICAOAirport>""" + airport + """</ICAOAirport>
-              </ICAO>
-          </ATCWaypoint>\n"""
-        
-
-    #print(Max_app_df)
-    
   def Create_flight_plan_arr(src,des,RW):
   
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+src+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_airport_db.connect() as conn:
       src_df = pd.read_sql(sql=qry_str, con=conn.connection) 
     
     src_name = src_df.iloc[-1]["name"]
     src_Pos = Common.format_coordinates(float(src_df.iloc[-1]["laty"]),float(src_df.iloc[-1]["lonx"]),float(src_df.iloc[-1]["altitude"]))
     
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+des+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_airport_db.connect() as conn:
       des_df = pd.read_sql(sql=qry_str, con=conn.connection) 
     des_name = des_df.iloc[-1]["name"] 
     des_Pos =  Common.format_coordinates(float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),float(des_df.iloc[-1]["altitude"]))
@@ -1050,7 +977,7 @@ class Arrival:
       if RW_des[0] == "R":
         RW_designa = "RIGHT"
       
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_approach_db.connect() as conn:
       qry_str = '''SELECT "_rowid_", * FROM "main"."approach" WHERE "airport_ident" LIKE '%'''+des+'''%' ESCAPE '\\' AND "type" LIKE '%GPS%' ESCAPE '\\' AND "suffix" LIKE '%A%' ESCAPE '\\' AND "runway_name" LIKE '%'''+RW+'''%' ESCAPE '\\'LIMIT 0, 49999;'''
       approach_df = pd.read_sql(sql=qry_str, con=conn.connection)
     
@@ -1062,10 +989,10 @@ class Arrival:
     if len(approach_df) > 0:
       for index,app in approach_df.iterrows():
         app_id = app["approach_id"].iloc[-1]
-        with Common.engine_fldatabase.connect() as conn:
+        with Common.engine_approach_db.connect() as conn:
           qry_str = '''SELECT "_rowid_", * FROM "main"."approach_leg" WHERE "approach_id" = "'''+str(app_id) + '''" '''
           app_leg = pd.read_sql(sql=qry_str, con=conn.connection)
-          with Common.engine_fldatabase.connect() as conn:
+          with Common.engine_waypoint_db.connect() as conn:
             qry_str = '''SELECT "_rowid_", * FROM "main"."waypoint" WHERE "ident" LIKE '%'''+app_leg.iloc[0]["fix_ident"] +'''%' ESCAPE '\\' AND "region" LIKE '%'''+app_leg.iloc[0]["fix_region"]+'''%' '''
             way_df = pd.read_sql(sql=qry_str, con=conn.connection)
             point2 = (way_df.iloc[-1]["laty"], way_df.iloc[-1]["lonx"]) 
@@ -1078,13 +1005,13 @@ class Arrival:
     first_way_point = 0
     if len(Cur_app_leg_df) > 0:
       for index, app_leg in Cur_app_leg_df.iterrows():
-        with Common.engine_fldatabase.connect() as conn:
+        with Common.engine_waypoint_db.connect() as conn:
           qry_str = '''SELECT "_rowid_", * FROM "main"."waypoint" WHERE "ident" LIKE '%'''+app_leg["fix_ident"] +'''%' ESCAPE '\\' AND "region" LIKE '%'''+app_leg["fix_region"]+'''%' '''
           way_df = pd.read_sql(sql=qry_str, con=conn.connection)
           if len(way_df) > 0 :
             point2 = (way_df.iloc[-1]["laty"], way_df.iloc[-1]["lonx"]) 
             distance = geodesic((float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"])), point2).km
-            if distance < 100 :
+            if distance < 100 and app_leg["fix_type"] != "V":
               if first_way_point == 0:
                 first_way_lat = float(way_df["laty"].iloc[-1])
                 first_way_lon = float(way_df["lonx"].iloc[-1])
@@ -1094,21 +1021,15 @@ class Arrival:
             <ATCWaypointType>Intersection</ATCWaypointType>
             <WorldPosition>"""+app_waypoint_Pos+"""</WorldPosition>
             <SpeedMaxFP>-1</SpeedMaxFP>
-            <ArrivalFP>"""+App_Name+"""</ArrivalFP>
-            <RunwayNumberFP>"""+RW_num+"""</RunwayNumberFP>\n"""
-              if len(RW_des) > 0:
-                approach_string +="""            <RunwayDesignatorFP>"""+RW_designa+"""</RunwayDesignatorFP>\n"""
-              
-              approach_string += """            <ICAO>
+            <ICAO>
                 <ICAORegion>""" + app_leg["fix_region"] + """</ICAORegion>
                 <ICAOIdent>""" + app_leg["fix_ident"] + """</ICAOIdent>
-                <ICAOAirport>""" + des + """</ICAOAirport>
             </ICAO>
         </ATCWaypoint>\n"""
 
-    if first_way_point == 1:
+    if first_way_point == 1 and len(Cur_app_leg_df) < 2:
 
-      with Common.engine_fldatabase.connect() as conn:
+      with Common.engine_waypoint_db.connect() as conn:
           qry_str = '''SELECT"_rowid_",* FROM "main"."waypoint" WHERE "laty" > '''  + str(int(first_way_lat)-3) + ''' AND "laty" < '''  + str(int(first_way_lat) + 3) + ''' AND "lonx" > '''  + str(int(first_way_lon)-3) + '''  AND "lonx" < '''  + str(int(first_way_lon) + 3) + ''' AND "type" LIKE '%RNAV%' '''
           way_df = pd.read_sql(sql=qry_str, con=conn.connection)
     
@@ -1129,11 +1050,11 @@ class Arrival:
 
     
     
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_approach_db.connect() as conn:
       qry_str = '''SELECT "_rowid_", * FROM "main"."approach" WHERE "airport_ident" LIKE '%'''+des+'''%' ESCAPE '\\'  AND "runway_name" LIKE '%'''+RW+'''%' AND "heading" IS NOT NULL'''
       Way_RW_Heading = pd.read_sql(sql=qry_str, con=conn.connection)
     
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_waypoint_db.connect() as conn:
       qry_str = '''SELECT "_rowid_", * FROM "main"."waypoint" WHERE "ident" LIKE '%'''+Way_RW_Heading.iloc[-1]["fix_ident"] +'''%' ESCAPE '\\' AND "region" LIKE '%'''+Way_RW_Heading.iloc[-1]["fix_region"]+'''%' '''
       RW_Head_way_df = pd.read_sql(sql=qry_str, con=conn.connection)
 
@@ -1187,7 +1108,6 @@ class Arrival:
         <ATCWaypoint id=\""""+ des +"""\">
             <ATCWaypointType>Airport</ATCWaypointType>
             <WorldPosition>"""+des_Pos+"""</WorldPosition>
-            <ApproachTypeFP>ILS</ApproachTypeFP>
             <RunwayNumberFP>"""+RW_num+"""</RunwayNumberFP>\n"""
     if len(RW_des) > 0:
       fln_plan +="""            <RunwayDesignatorFP>"""+RW_designa+"""</RunwayDesignatorFP>\n"""
@@ -1239,7 +1159,8 @@ class Arrival:
       Landing_light = 0.0
       ON_Ground = 0.0
       Heading = 0.0
-      SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Heading,Req_Id,Obj_Id]
+      Gear = 0.0
+      SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Heading,Gear,Req_Id,Obj_Id]
       try:
         flt_plan = Arrival.Create_flight_plan_arr(Src,Des,RW)
         Livery_name = Common.Get_flight_match(Call,Type)
@@ -1248,7 +1169,7 @@ class Arrival:
         Common.Global_req_id+=1
         time.sleep(2)
         if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
-            sm.AIAircraftAirspeed(SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0],400)
+            sm.AIAircraftAirspeed(SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0],500)
       except:
         print("Cannot create Arrival flight plan")
       #print(flt_plan)
@@ -1259,9 +1180,6 @@ class Arrival:
     point1  = (SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"])
     Altitude1 = SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"]
     for index, flight in SimConnect.MSFS_AI_Arrival_Traffic.iterrows():
-      #print(flight)
-      sm.AIAircraft_GetPosition(flight["Req_Id"],flight["Obj_Id"])
-      time.sleep(1)
       try:
         if flight["Cur_Lat"] != 0.0 and flight["Cur_Log"] != 0.0:
           #Check Dist
@@ -1274,17 +1192,17 @@ class Arrival:
             print("Arrival Remove----" + flight["Call"] + " " + flight["Type"] + " Distance " + str(dis) + " Altitude diff" + str(Alt))
             sm.AIRemoveObject(flight["Obj_Id"],flight["Req_Id"])
             SimConnect.MSFS_AI_Arrival_Traffic = SimConnect.MSFS_AI_Arrival_Traffic[SimConnect.MSFS_AI_Arrival_Traffic['Obj_Id'] != flight["Obj_Id"]]
-            time.sleep(2)
       except:
         print("Error: Arrival " + str(flight))
     SimConnect.MSFS_AI_Arrival_Traffic = SimConnect.MSFS_AI_Arrival_Traffic.reset_index(drop=True)
     #print(SimConnect.MSFS_AI_Arrival_Traffic)
 
-  def Check_Traffic_onRunway_Arrival():
+  def Check_Traffic_onRunway_Arrival(RW):
     for index, flight in SimConnect.MSFS_AI_Arrival_Traffic.iterrows():
       sm.AIAircraft_GetPosition(flight["Req_Id"],flight["Obj_Id"])
       Call = flight["Call"]
-      if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Landing_light"].values[0] == 0:
+      if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Gear"].values[0] == 0 or \
+      SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Landing_light"].values[0] == 0:
         continue
       time.sleep(1)
       Airspeed = SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Airspeed"].values[0]
@@ -1348,7 +1266,6 @@ class Departure:
   
   FR24_Departure_Traffic = pd.DataFrame(columns=['Estimate_time', 'Scheduled_time', "Call","des", "Type","Reg",'Ocio',"Src_ICAO","Des_ICAO","Local_depart_time"])
 
-  departure_string = ""
   Departure_Index = 0
 
   def Get_Departure(airport,max_departure):
@@ -1360,7 +1277,7 @@ class Departure:
     print("------------Get Departure FR24 Traffic---------------------")
     
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "icao" LIKE '%"""+airport+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
+    with Common.engine_airport_db.connect() as conn:
       src_air = pd.read_sql(sql=qry_str, con=conn.connection)
     airport_iata = src_air["iata"].iloc[-1]
     Max_Gate = int(src_air["num_parking_gate"].iloc[-1]) + int(src_air["num_parking_ga_ramp"].iloc[-1])
@@ -1416,7 +1333,7 @@ class Departure:
 
               
               qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+re.search(r'\((.*?)\)', Des).group(1).upper()+"""%'"""
-              with Common.engine_fldatabase.connect() as conn:
+              with Common.engine_airport_db.connect() as conn:
                   des_air = pd.read_sql(sql=qry_str, con=conn.connection)
               
               Src_ICAO = airport
@@ -1447,34 +1364,27 @@ class Departure:
     driver.quit()
     #time.sleep(5)
 
-  def Get_SID(airport,RW):
-
-    with Common.engine_fldatabase.connect() as conn:
-      qry_str = '''SELECT "_rowid_", * FROM "main"."approach" WHERE "airport_ident" LIKE '%'''+airport+'''%' ESCAPE '\\' AND "type" LIKE '%GPS%' ESCAPE '\\' AND "suffix" LIKE '%D%' ESCAPE '\\' AND "runway_name" LIKE '%'''+RW+'''%' ESCAPE '\\'LIMIT 0, 49999;'''
-      src_df = pd.read_sql(sql=qry_str, con=conn.connection)
-    
-    Max_dep_df = pd.DataFrame()
-    if len(src_df) > 1:
-      max_leg_dep = 0
-      for index,dep in src_df.iterrows():
-        dep_id = dep["approach_id"].iloc[-1]
-        with Common.engine_fldatabase.connect() as conn:
-          qry_str = '''SELECT "_rowid_", * FROM "main"."approach_leg" WHERE "approach_id" = "'''+str(dep_id) + '''" '''
-          Cur_dep = pd.read_sql(sql=qry_str, con=conn.connection)
-          cur_len = len(Cur_dep)
-          if cur_len > max_leg_dep:
-            Max_dep_df = Cur_dep
-            max_leg_dep = cur_len
-            Dep_Name = dep["fix_ident"]
-          
-      try:
-        Max_dep_df.drop(['is_missed', 'type' ,'arinc_descr_code','approach_fix_type','turn_direction','recommended_fix_type', 'rnp',\
-                       'time','theta','recommended_fix_laty','is_true_course','speed_limit_type','recommended_fix_ident','recommended_fix_region','recommended_fix_lonx','is_flyover','course'], axis=1,inplace=True)
-      except:
-        pass
-    
-    #fill lat and log
+  def Create_flight_plan_Dep(src,des,RW):
   
+    crusing_alt = 30000
+    qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+src+"""%'"""
+    with Common.engine_airport_db.connect() as conn:
+      src_df = pd.read_sql(sql=qry_str, con=conn.connection) 
+    
+    src_name = src_df.iloc[-1]["name"]
+    src_Pos = Common.format_coordinates(float(src_df.iloc[-1]["laty"]),float(src_df.iloc[-1]["lonx"]),float(src_df.iloc[-1]["altitude"]))
+    
+    qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+des+"""%'"""
+    with Common.engine_airport_db.connect() as conn:
+      des_df = pd.read_sql(sql=qry_str, con=conn.connection) 
+    des_name = des_df.iloc[-1]["name"] 
+    des_Pos =  Common.format_coordinates(float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),float(des_df.iloc[-1]["altitude"]))
+  
+    
+    with Common.engine_approach_db.connect() as conn:
+      qry_str = '''SELECT "_rowid_", * FROM "main"."approach" WHERE "airport_ident" LIKE '%'''+src+'''%' ESCAPE '\\' AND "type" LIKE '%GPS%' ESCAPE '\\' AND "suffix" LIKE '%D%' ESCAPE '\\' AND "runway_name" LIKE '%'''+RW+'''%' ESCAPE '\\'LIMIT 0, 49999;'''
+      SID_df = pd.read_sql(sql=qry_str, con=conn.connection)
+
     RW_num =  str(int((re.findall(r'\d+', RW))[0]))
     RW_des = re.findall(r'[A-Za-z]', RW)
     
@@ -1485,65 +1395,64 @@ class Departure:
         RW_designa = "LEFT"
       if RW_des[0] == "R":
         RW_designa = "RIGHT"
-  
-    qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+airport+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
-      des_df = pd.read_sql(sql=qry_str, con=conn.connection) 
-  
-    for index, dep_leg in Max_dep_df.iterrows():
-      if dep_leg["fix_ident"] == None or dep_leg["fix_region"] == None:
-        continue
-      with Common.engine_fldatabase.connect() as conn:
-        qry_str = '''SELECT "_rowid_", * FROM "main"."waypoint" WHERE "ident" LIKE '%'''+dep_leg["fix_ident"] +'''%' ESCAPE '\\' AND "region" LIKE '%'''+dep_leg["fix_region"]+'''%' '''
-        way_df = pd.read_sql(sql=qry_str, con=conn.connection)
-      if len(way_df) > 0:
-        Max_dep_df.loc[index,"fix_lonx"] = way_df["lonx"].iloc[-1]
-        Max_dep_df.loc[index,"fix_laty"] = way_df["laty"].iloc[-1]
-        point1 = (float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]))
-        point2 = (way_df["laty"].iloc[-1], way_df["lonx"].iloc[-1]) 
-        distance = geodesic(point1, point2).km
-        Max_dep_df.loc[index,"distance"] = distance
-        
-        if Max_dep_df.loc[index,"altitude1"] > 0:
-          altitude = Max_dep_df.loc[index,"altitude1"]
-        else:
-          altitude = 10000
-        src_waypoint_Pos = Common.format_coordinates(float(way_df["laty"].iloc[-1]),float(way_df["lonx"].iloc[-1]),float(altitude))
-        Departure.departure_string += """        <ATCWaypoint id=\"""" + dep_leg["fix_ident"] + """\">
-              <ATCWaypointType>Intersection</ATCWaypointType>
-              <WorldPosition>"""+src_waypoint_Pos+"""</WorldPosition>
-              <SpeedMaxFP>400</SpeedMaxFP>
-              <DepartureFP>"""+Dep_Name+"""</DepartureFP>
-              <RunwayNumberFP>"""+RW_num+"""</RunwayNumberFP>\n"""
     
-        if len(RW_des) > 0:
-            Departure.departure_string +="""            <RunwayDesignatorFP>"""+RW_designa+"""</RunwayDesignatorFP>\n"""
-        
-        Departure.departure_string += """            <ICAO>
-                  <ICAORegion>""" + dep_leg["fix_region"] + """</ICAORegion>
-                  <ICAOIdent>""" + dep_leg["fix_ident"] + """</ICAOIdent>
-                  <ICAOAirport>""" +airport + """</ICAOAirport>
-              </ICAO>
-          </ATCWaypoint>\n"""
-        
-  
-    #print(Max_dep_df)
+    
+    departure_string = ""
+    prev_dis = 9999999999999999
+    Cur_dep = pd.DataFrame()
+    point1 = (float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]))
+    if len(SID_df) > 1:
+      for index,dep in SID_df.iterrows():
+        dep_id = dep["approach_id"].iloc[-1]
+        with Common.engine_approach_db.connect() as conn:
+          qry_str = '''SELECT "_rowid_", * FROM "main"."approach_leg" WHERE "approach_id" = "'''+str(dep_id) + '''" '''
+          Cur_dep_leg = pd.read_sql(sql=qry_str, con=conn.connection)
+          if len(Cur_dep_leg) > 0:
+            with Common.engine_waypoint_db.connect() as conn:
+              qry_str = '''SELECT "_rowid_", * FROM "main"."waypoint" WHERE "ident" LIKE '%'''+Cur_dep_leg.iloc[-1]["fix_ident"] +'''%' ESCAPE '\\' AND "region" LIKE '%'''+Cur_dep_leg.iloc[-1]["fix_region"]+'''%' '''
+              way_df = pd.read_sql(sql=qry_str, con=conn.connection)
+              if len(way_df) > 0:
+                point2 = (float(way_df["laty"].iloc[-1]),float(way_df["lonx"].iloc[-1]))
+                distance = geodesic(point1, point2).km
+                if distance < prev_dis:
+                  prev_dis = distance
+                  Cur_dep = Cur_dep_leg
+                  Dep_Name = dep["fix_ident"]
+          
+    if len(Cur_dep) > 0:
+      Cur_dep.drop(['is_missed', 'type' ,'arinc_descr_code','approach_fix_type','turn_direction','recommended_fix_type', 'rnp',\
+                       'time','theta','recommended_fix_laty','is_true_course','speed_limit_type','recommended_fix_ident','recommended_fix_region','recommended_fix_lonx','is_flyover','course'], axis=1,inplace=True)
 
-  def Create_flight_plan_Dep(src,des):
-  
-    crusing_alt = 30000
-    qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+src+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
-      src_df = pd.read_sql(sql=qry_str, con=conn.connection) 
+      for index, dep_leg in Cur_dep.iterrows():
+        if dep_leg["fix_ident"] == None or dep_leg["fix_region"] == None:
+          continue
+        with Common.engine_waypoint_db.connect() as conn:
+          qry_str = '''SELECT "_rowid_", * FROM "main"."waypoint" WHERE "ident" LIKE '%'''+dep_leg["fix_ident"] +'''%' ESCAPE '\\' AND "region" LIKE '%'''+dep_leg["fix_region"]+'''%' '''
+          way_df = pd.read_sql(sql=qry_str, con=conn.connection)
+        
+        if len(way_df) > 0:
+          if dep_leg["altitude1"] > 0:
+            altitude = dep_leg["altitude1"]
+          else:
+            altitude = 10000
+          waypoint_Pos = Common.format_coordinates(float(way_df["laty"].iloc[-1]),float(way_df["lonx"].iloc[-1]),float(altitude))
+          departure_string += """        <ATCWaypoint id=\"""" + dep_leg["fix_ident"] + """\">
+                <ATCWaypointType>Intersection</ATCWaypointType>
+                <WorldPosition>"""+waypoint_Pos+"""</WorldPosition>
+                <SpeedMaxFP>400</SpeedMaxFP>
+                <DepartureFP>"""+Dep_Name+"""</DepartureFP>
+                <RunwayNumberFP>"""+RW_num+"""</RunwayNumberFP>\n"""
+      
+          if len(RW_des) > 0:
+              departure_string +="""            <RunwayDesignatorFP>"""+RW_designa+"""</RunwayDesignatorFP>\n"""
+          
+          departure_string += """            <ICAO>
+                    <ICAORegion>""" + dep_leg["fix_region"] + """</ICAORegion>
+                    <ICAOIdent>""" + dep_leg["fix_ident"] + """</ICAOIdent>
+                    <ICAOAirport>""" +src + """</ICAOAirport>
+                </ICAO>
+            </ATCWaypoint>\n"""
     
-    src_name = src_df.iloc[-1]["name"]
-    src_Pos = Common.format_coordinates(float(src_df.iloc[-1]["laty"]),float(src_df.iloc[-1]["lonx"]),float(src_df.iloc[-1]["altitude"]))
-    
-    qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+des+"""%'"""
-    with Common.engine_fldatabase.connect() as conn:
-      des_df = pd.read_sql(sql=qry_str, con=conn.connection) 
-    des_name = des_df.iloc[-1]["name"] 
-    des_Pos =  Common.format_coordinates(float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),float(des_df.iloc[-1]["altitude"]))
   
     fln_plan = """<?xml version="1.0" encoding="UTF-8"?> \
  
@@ -1570,7 +1479,7 @@ class Departure:
             <ICAO>
                 <ICAOIdent>"""+src + """</ICAOIdent>
             </ICAO>
-        </ATCWaypoint>\n""" + Departure.departure_string + """       <ATCWaypoint id=\""""+ des +"""\">
+        </ATCWaypoint>\n""" + departure_string + """       <ATCWaypoint id=\""""+ des +"""\">
             <ATCWaypointType>Airport</ATCWaypointType>
             <WorldPosition>"""+des_Pos+"""</WorldPosition>
             <ICAO>
@@ -1633,7 +1542,7 @@ class Departure:
     SimConnect.MSFS_AI_Departure_Traffic = SimConnect.MSFS_AI_Departure_Traffic.reset_index(drop=True)
     #print(SimConnect.MSFS_AI_Departure_Traffic)     
 
-  def Assign_Flt_plan():
+  def Assign_Flt_plan(RW):
     global current_dir
     if Departure.Departure_Index < len(SimConnect.MSFS_AI_Departure_Traffic):
       try:
@@ -1643,7 +1552,7 @@ class Departure:
         Type = SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Type"]
         Obj_Id =  SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Obj_Id"]
         Req_Id = Common.Global_req_id
-        flt_plan = Departure.Create_flight_plan_Dep(Src,Des)
+        flt_plan = Departure.Create_flight_plan_Dep(Src,Des,RW)
         print("Depart----" +Call + " " + Type)
         sm.AISetAircraftFlightPlan(Obj_Id, current_dir + "/fln_plan_dep",Req_Id)
         Common.Global_req_id+=1
@@ -1678,4 +1587,5 @@ class Departure:
 
 Common.Run()
 
-#Arrival.Create_flight_plan_arr("VERP","VABB","27")
+#Arrival.Create_flight_plan_arr("OOMS","EDDF","07R")
+#Departure.Create_flight_plan_Dep("EDDF","OOMS","07R")

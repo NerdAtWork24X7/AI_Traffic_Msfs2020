@@ -27,7 +27,6 @@ This project reads real-time flight data from Flight Radar 24 and injects it int
 
 ## Installation
 - git clone https://github.com/NerdAtWork24X7/AI_Traffic_Msfs2020.git
-- Link for modified little_navmap_msfs.sqlite -- https://drive.google.com/file/d/1LRD1JWVqBQ1_btgYX5jagCKUEGadeKts/view?usp=sharing
 - Create config.py
 
 ##Config
