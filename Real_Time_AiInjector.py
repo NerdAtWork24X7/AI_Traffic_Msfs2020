@@ -985,6 +985,7 @@ class Arrival:
     point1 = (float(src_df.iloc[-1]["laty"]),float(src_df.iloc[-1]["lonx"]))
     prev_distance = 99999999999
     Cur_app_leg_df = pd.DataFrame()
+    FPType = "IFR"
     approach_string = ""
     if len(approach_df) > 0:
       for index,app in approach_df.iterrows():
@@ -1003,6 +1004,12 @@ class Arrival:
               prev_distance = distance
       
     first_way_point = 0
+    Num_Waypoint = 0
+    if len(Cur_app_leg_df) > 5:
+      Outer_dis = 70
+    else:
+      Outer_dis = 100
+    
     if len(Cur_app_leg_df) > 0:
       for index, app_leg in Cur_app_leg_df.iterrows():
         with Common.engine_waypoint_db.connect() as conn:
@@ -1010,36 +1017,43 @@ class Arrival:
           way_df = pd.read_sql(sql=qry_str, con=conn.connection)
           if len(way_df) > 0 :
             point2 = (way_df.iloc[-1]["laty"], way_df.iloc[-1]["lonx"]) 
-            distance = geodesic((float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"])), point2).km
-            if distance < 100 and app_leg["fix_type"] != "V":
-              if first_way_point == 0:
+            distance = geodesic((float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"])), point2).km         
+            if distance < Outer_dis and app_leg["fix_type"] != "V" :
+              if first_way_point == 0 and distance > 25:
                 first_way_lat = float(way_df["laty"].iloc[-1])
                 first_way_lon = float(way_df["lonx"].iloc[-1])
                 first_way_point = 1
-              app_waypoint_Pos = Common.format_coordinates(float(way_df["laty"].iloc[-1]),float(way_df["lonx"].iloc[-1]),float(5000))  
-              approach_string += """        <ATCWaypoint id=\"""" + app_leg["fix_ident"] + """\">
+              if first_way_point == 1:
+                Num_Waypoint += 1
+                app_waypoint_Pos = Common.format_coordinates(float(way_df["laty"].iloc[-1]),float(way_df["lonx"].iloc[-1]),float(5000))  
+                approach_string += """        <ATCWaypoint id=\"""" + app_leg["fix_ident"] + """\">
             <ATCWaypointType>Intersection</ATCWaypointType>
             <WorldPosition>"""+app_waypoint_Pos+"""</WorldPosition>
             <SpeedMaxFP>-1</SpeedMaxFP>
             <ICAO>
                 <ICAORegion>""" + app_leg["fix_region"] + """</ICAORegion>
                 <ICAOIdent>""" + app_leg["fix_ident"] + """</ICAOIdent>
+                <ICAOAirport>""" + des + """</ICAOAirport>
             </ICAO>
         </ATCWaypoint>\n"""
-
-    if first_way_point == 1 and len(Cur_app_leg_df) < 2:
-
+  	
+    if Num_Waypoint < 4:
+      FPType = "IFR"
+    
+    if first_way_point == 1 and Num_Waypoint < 2:
       with Common.engine_waypoint_db.connect() as conn:
           qry_str = '''SELECT"_rowid_",* FROM "main"."waypoint" WHERE "laty" > '''  + str(int(first_way_lat)-3) + ''' AND "laty" < '''  + str(int(first_way_lat) + 3) + ''' AND "lonx" > '''  + str(int(first_way_lon)-3) + '''  AND "lonx" < '''  + str(int(first_way_lon) + 3) + ''' AND "type" LIKE '%RNAV%' '''
           way_df = pd.read_sql(sql=qry_str, con=conn.connection)
     
       point1 = (first_way_lat,first_way_lon)
+
       df_nearest_waypoint = pd.DataFrame()
       pre_dis = 9999999999999999
       for waypoint in way_df.iterrows():
           point2 = (float(waypoint[1]["laty"]),float(waypoint[1]["lonx"]))
           Dis = geodesic(point1, point2).km
-          if Dis< pre_dis and Dis > 5 and Dis < 100:
+          Dis_airport = geodesic((float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"])), point2).km
+          if Dis< pre_dis and Dis > 2 and Dis < 100 and Dis_airport > 25:
             df_nearest_waypoint = waypoint
             pre_dis = Dis
 
@@ -1068,7 +1082,7 @@ class Arrival:
     <Descr>AceXML Document</Descr>
     <FlightPlan.FlightPlan>
         <Title>"""+src + """ to """+ des +"""</Title>
-        <FPType>VFR</FPType>
+        <FPType>""" + FPType + """</FPType>
         <CruisingAlt>""" + str(crusing_alt) + """</CruisingAlt>
         <DepartureID>""" + src + """</DepartureID>
         <DepartureLLA>""" + src_Pos +"""</DepartureLLA>
@@ -1169,7 +1183,7 @@ class Arrival:
         Common.Global_req_id+=1
         time.sleep(2)
         if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
-            sm.AIAircraftAirspeed(SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0],500)
+            sm.AIAircraftAirspeed(SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0],600)
       except:
         print("Cannot create Arrival flight plan")
       #print(flt_plan)
@@ -1587,5 +1601,6 @@ class Departure:
 
 Common.Run()
 
-#Arrival.Create_flight_plan_arr("OOMS","EDDF","07R")
+#Arrival.Create_flight_plan_arr("VARP","EDDF","07R")
+#Arrival.Create_flight_plan_arr("VOHS","VABB","27")
 #Departure.Create_flight_plan_Dep("EDDF","OOMS","07R")
