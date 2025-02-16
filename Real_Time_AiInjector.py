@@ -43,7 +43,7 @@ MAX_PARKED_AI_FLIGHTS = 50
 CRUISE_ALTITUDE = 10000
 SRC_GROUND_RANGE = 50
 DES_GROUND_RANGE = 200
-GROUND_INJECTION_TIME_ARR = 1
+GROUND_INJECTION_TIME_ARR = 2
 GROUND_INJECTION_TIME_DEP = 2
 CRUISE_INJECTION_TIME = 5
 SPWAN_DIST = 200
@@ -314,25 +314,27 @@ class Common:
           
           if (Fr24_Dep_len == 0 or Fr24_Arr_len == 0) and Common.Retry_SRC < 2:
             print("--------------At Departure Airport-------------------") 
+            Arrival.Get_Arrival(SRC_AIRPORT_IACO,100)
+            Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
+            Arrival.Arrival_Index += 1
+            
             Departure.Get_Departure(SRC_AIRPORT_IACO,100)
             Departure.Inject_Parked_Traffic()
             Departure.Assign_Flt_plan(SRC_ACTIVE_RUNWAY)
             Departure.Departure_Index += 1 
             
-            Arrival.Get_Arrival(SRC_AIRPORT_IACO,100)
-            Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
-            Arrival.Arrival_Index += 1
+
             Common.Retry_SRC += 1             #Retry only once if Flight Radar data is available
             
           else:
-            if min % GROUND_INJECTION_TIME_DEP == 0 and Departure.Departure_Index < MAX_DEPARTURE_AI_FLIGHTS:   
+            if (Departure.Departure_Index < 5 or min % GROUND_INJECTION_TIME_DEP == 0) and Departure.Departure_Index < MAX_DEPARTURE_AI_FLIGHTS:   
               if Departure.Departure_Index < Fr24_Dep_len:
                   Departure.Assign_Flt_plan(SRC_ACTIVE_RUNWAY)
                   Departure.Departure_Index += 1
               else:
                 print("Departure injection Completed at Departure airport")
 
-            if min % GROUND_INJECTION_TIME_ARR == 0 and len(SimConnect.MSFS_AI_Arrival_Traffic) < MAX_ARRIVAL_AI_FLIGHTS:
+            if (Arrival.Arrival_Index < 5 or min % GROUND_INJECTION_TIME_ARR == 0) and len(SimConnect.MSFS_AI_Arrival_Traffic) < MAX_ARRIVAL_AI_FLIGHTS:
               if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic) :
                 if Common.Skip_injection % 5 != 0:
                   Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
@@ -368,14 +370,14 @@ class Common:
             Common.Retry_DES += 1             #Retry only once if Flight Radar data is available
           
           else:
-            if min % GROUND_INJECTION_TIME_DEP == 0 and Departure.Departure_Index < MAX_DEPARTURE_AI_FLIGHTS:
+            if (Departure.Departure_Index < 5 or min % GROUND_INJECTION_TIME_DEP == 0) and Departure.Departure_Index < MAX_DEPARTURE_AI_FLIGHTS:
               if Departure.Departure_Index < Fr24_Dep_len:
                   Departure.Assign_Flt_plan(DES_ACTIVE_RUNWAY)
                   Departure.Departure_Index += 1
               else:
                 print("Departure injection Completed at destination airport")
 
-            if min % GROUND_INJECTION_TIME_ARR == 0 and len(SimConnect.MSFS_AI_Arrival_Traffic) < MAX_ARRIVAL_AI_FLIGHTS:
+            if (Arrival.Arrival_Index < 5 or min % GROUND_INJECTION_TIME_ARR == 0) and len(SimConnect.MSFS_AI_Arrival_Traffic) < MAX_ARRIVAL_AI_FLIGHTS:
               if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic) :
                 if Common.Skip_injection % 5 != 0:
                   Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
@@ -697,7 +699,7 @@ class Cruise:
           if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
             sm.AIAircraftAirspeed(SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0],500)
         except:
-          print("Cannot create Arrival Des Cruise flight plan")  
+          print("Cannot create Arrival src Cruise flight plan")  
 
     #print(SimConnect.MSFS_Cruise_Traffic)
 
@@ -739,10 +741,14 @@ class Cruise:
           if Dis > 2 and Dis < 100:
             df_nearest_waypoint_list.append(waypoint)
     
-    df_nearest_waypoint = random.choice(df_nearest_waypoint_list) 
-    waypoint_Pos = Common.format_coordinates(float(df_nearest_waypoint[1]["laty"]),float(df_nearest_waypoint[1]["lonx"]),float(crusing_alt))
-    waypoint_id = df_nearest_waypoint[1]["ident"]
-    waypoint_reg = df_nearest_waypoint[1]["region"]
+    if len(df_nearest_waypoint_list) > 0:
+      df_nearest_waypoint = random.choice(df_nearest_waypoint_list) 
+      waypoint_Pos = Common.format_coordinates(float(df_nearest_waypoint[1]["laty"]),float(df_nearest_waypoint[1]["lonx"]),float(crusing_alt))
+      waypoint_id = df_nearest_waypoint[1]["ident"]
+      waypoint_reg = df_nearest_waypoint[1]["region"]
+    else:
+      print("No waypoint in Radius of 100 KM")
+
     
     
     fln_plan = \
@@ -985,7 +991,6 @@ class Arrival:
     point1 = (float(src_df.iloc[-1]["laty"]),float(src_df.iloc[-1]["lonx"]))
     prev_distance = 99999999999
     Cur_app_leg_df = pd.DataFrame()
-    FPType = "IFR"
     approach_string = ""
     if len(approach_df) > 0:
       for index,app in approach_df.iterrows():
@@ -1010,6 +1015,7 @@ class Arrival:
     else:
       Outer_dis = 100
     
+    Injection_Waypoint = pd.DataFrame(columns=["waypoint","dis"])
     if len(Cur_app_leg_df) > 0:
       for index, app_leg in Cur_app_leg_df.iterrows():
         with Common.engine_waypoint_db.connect() as conn:
@@ -1026,6 +1032,7 @@ class Arrival:
               if first_way_point == 1:
                 Num_Waypoint += 1
                 app_waypoint_Pos = Common.format_coordinates(float(way_df["laty"].iloc[-1]),float(way_df["lonx"].iloc[-1]),float(5000))  
+                Injection_Waypoint.loc[Num_Waypoint] = [app_leg["fix_ident"],distance]
                 approach_string += """        <ATCWaypoint id=\"""" + app_leg["fix_ident"] + """\">
             <ATCWaypointType>Intersection</ATCWaypointType>
             <WorldPosition>"""+app_waypoint_Pos+"""</WorldPosition>
@@ -1037,9 +1044,7 @@ class Arrival:
             </ICAO>
         </ATCWaypoint>\n"""
   	
-    if Num_Waypoint < 4:
-      FPType = "IFR"
-    
+   
     if first_way_point == 1 and Num_Waypoint < 2:
       with Common.engine_waypoint_db.connect() as conn:
           qry_str = '''SELECT"_rowid_",* FROM "main"."waypoint" WHERE "laty" > '''  + str(int(first_way_lat)-3) + ''' AND "laty" < '''  + str(int(first_way_lat) + 3) + ''' AND "lonx" > '''  + str(int(first_way_lon)-3) + '''  AND "lonx" < '''  + str(int(first_way_lon) + 3) + ''' AND "type" LIKE '%RNAV%' '''
@@ -1082,7 +1087,7 @@ class Arrival:
     <Descr>AceXML Document</Descr>
     <FlightPlan.FlightPlan>
         <Title>"""+src + """ to """+ des +"""</Title>
-        <FPType>""" + FPType + """</FPType>
+        <FPType>IFR</FPType>
         <CruisingAlt>""" + str(crusing_alt) + """</CruisingAlt>
         <DepartureID>""" + src + """</DepartureID>
         <DepartureLLA>""" + src_Pos +"""</DepartureLLA>
@@ -1134,60 +1139,68 @@ class Arrival:
   """
     with open("fln_plan_arr.pln", "w", encoding="utf-8-sig") as file:
       file.write(fln_plan)
-    return fln_plan
+    
+    inject_index = 1
+    for index,waypoint in Injection_Waypoint.iterrows():
+      if (len(Injection_Waypoint) - (Arrival.Arrival_Index + 1)) == index and waypoint["dis"] > 25:
+        inject_index = index + 1
+        print(waypoint["waypoint"])
+  
+    return inject_index
 
   def inject_Traffic_Arrival(RW):
     global current_dir
-    if Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Call"] in SimConnect.MSFS_AI_Arrival_Traffic['Call'].values:
-      return
-    if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic):
-      last_element = len(SimConnect.MSFS_AI_Arrival_Traffic)
-      Estimate_time = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Estimate_time"]
-      Call = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Call"]
-      Type = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Type"]
-      Src  = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Src_ICAO"]
-      Des = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Des_ICAO"]
-      Reg = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Reg"]
-      try:
-        Cur_Lat = Arrival.ADBS_Arrival_Traffic.loc[Arrival.ADBS_Arrival_Traffic["Reg"] == Reg, "Lat"].values[0]
-      except:
-        Cur_Lat = 0.0
-      try:  
-        Cur_Log = Arrival.ADBS_Arrival_Traffic.loc[Arrival.ADBS_Arrival_Traffic["Reg"] == Reg, "Lon"].values[0]
-      except:
-        Cur_Log = 0.0
-      
-      try:
-        altitude = Arrival.ADBS_Arrival_Traffic.loc[Arrival.ADBS_Arrival_Traffic["Reg"] == Reg, "Altitude"].values[0]
-      except:
-        altitude = 0
-      
-      Prv_Lat = 0.0
-      Prv_Log = 0.0
-      Par_log = 0.0
-      Par_lat = 0.0
-      Stuck = 0
-      Req_Id = Common.Global_req_id
-      Obj_Id = 0
-      Airspeed = 0.0
-      Landing_light = 0.0
-      ON_Ground = 0.0
-      Heading = 0.0
-      Gear = 0.0
-      SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Heading,Gear,Req_Id,Obj_Id]
-      try:
-        flt_plan = Arrival.Create_flight_plan_arr(Src,Des,RW)
-        Livery_name = Common.Get_flight_match(Call,Type)
-        print("Arrival----" + Call + " " + Type + " " + str(Livery_name))
-        result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(Call[2:]),current_dir + "/fln_plan_arr",float(1),False,Req_Id)
-        Common.Global_req_id+=1
-        time.sleep(2)
-        if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
-            sm.AIAircraftAirspeed(SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0],600)
-      except:
-        print("Cannot create Arrival flight plan")
-      #print(flt_plan)
-      #print(SimConnect.MSFS_AI_Arrival_Traffic)
+    if len(Arrival.FR24_Arrival_Traffic) > 0:
+      if Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Call"] in SimConnect.MSFS_AI_Arrival_Traffic['Call'].values:
+        return
+      if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic):
+        last_element = len(SimConnect.MSFS_AI_Arrival_Traffic)
+        Estimate_time = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Estimate_time"]
+        Call = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Call"]
+        Type = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Type"]
+        Src  = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Src_ICAO"]
+        Des = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Des_ICAO"]
+        Reg = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Reg"]
+        try:
+          Cur_Lat = Arrival.ADBS_Arrival_Traffic.loc[Arrival.ADBS_Arrival_Traffic["Reg"] == Reg, "Lat"].values[0]
+        except:
+          Cur_Lat = 0.0
+        try:  
+          Cur_Log = Arrival.ADBS_Arrival_Traffic.loc[Arrival.ADBS_Arrival_Traffic["Reg"] == Reg, "Lon"].values[0]
+        except:
+          Cur_Log = 0.0
+        
+        try:
+          altitude = Arrival.ADBS_Arrival_Traffic.loc[Arrival.ADBS_Arrival_Traffic["Reg"] == Reg, "Altitude"].values[0]
+        except:
+          altitude = 0
+        
+        Prv_Lat = 0.0
+        Prv_Log = 0.0
+        Par_log = 0.0
+        Par_lat = 0.0
+        Stuck = 0
+        Req_Id = Common.Global_req_id
+        Obj_Id = 0
+        Airspeed = 0.0
+        Landing_light = 0.0
+        ON_Ground = 0.0
+        Heading = 0.0
+        Gear = 0.0
+        SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Heading,Gear,Req_Id,Obj_Id]
+        try:
+          inject_index = Arrival.Create_flight_plan_arr(Src,Des,RW)
+          Livery_name = Common.Get_flight_match(Call,Type)
+          print("Arrival----" + Call + " " + Type + " " + str(Livery_name))
+          result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(Call[2:]),current_dir + "/fln_plan_arr",float(inject_index),False,Req_Id)
+          Common.Global_req_id+=1
+          time.sleep(2)
+          if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
+              sm.AIAircraftAirspeed(SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0],600)
+        except:
+          print("Cannot create Arrival flight plan")
+        #print(flt_plan)
+        #print(SimConnect.MSFS_AI_Arrival_Traffic)
 
   def Check_Traffic_Arrival():
 
@@ -1421,7 +1434,7 @@ class Departure:
         with Common.engine_approach_db.connect() as conn:
           qry_str = '''SELECT "_rowid_", * FROM "main"."approach_leg" WHERE "approach_id" = "'''+str(dep_id) + '''" '''
           Cur_dep_leg = pd.read_sql(sql=qry_str, con=conn.connection)
-          if len(Cur_dep_leg) > 0:
+          if len(Cur_dep_leg) > 0 and Cur_dep_leg.iloc[-1]["fix_ident"] != None and Cur_dep_leg.iloc[-1]["fix_region"] != None:
             with Common.engine_waypoint_db.connect() as conn:
               qry_str = '''SELECT "_rowid_", * FROM "main"."waypoint" WHERE "ident" LIKE '%'''+Cur_dep_leg.iloc[-1]["fix_ident"] +'''%' ESCAPE '\\' AND "region" LIKE '%'''+Cur_dep_leg.iloc[-1]["fix_region"]+'''%' '''
               way_df = pd.read_sql(sql=qry_str, con=conn.connection)
@@ -1558,7 +1571,7 @@ class Departure:
 
   def Assign_Flt_plan(RW):
     global current_dir
-    if Departure.Departure_Index < len(SimConnect.MSFS_AI_Departure_Traffic):
+    if Departure.Departure_Index < len(SimConnect.MSFS_AI_Departure_Traffic) and len(SimConnect.MSFS_AI_Departure_Traffic) > 0:
       try:
         Src = SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Src"]
         Des =  SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Des"]
@@ -1603,4 +1616,4 @@ Common.Run()
 
 #Arrival.Create_flight_plan_arr("VARP","EDDF","07R")
 #Arrival.Create_flight_plan_arr("VOHS","VABB","27")
-#Departure.Create_flight_plan_Dep("EDDF","OOMS","07R")
+#Departure.Create_flight_plan_Dep("NZAA","SCIP","05R")
