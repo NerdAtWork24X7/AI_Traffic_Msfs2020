@@ -36,18 +36,23 @@ SRC_ACTIVE_RUNWAY = ""
 DES_ACTIVE_RUNWAY = ""
 
 USE_FSTRAFFIC_LIVERY = True
+USE_AIG_LIVERY = True
+
 MAX_ARRIVAL_AI_FLIGHTS = 30
 MAX_DEPARTURE_AI_FLIGHTS = 30
 MAX_CRUISE_AI_FLIGHTS = 30
 MAX_PARKED_AI_FLIGHTS = 50
+
 CRUISE_ALTITUDE = 10000
 SRC_GROUND_RANGE = 50
-DES_GROUND_RANGE = 200
+DES_GROUND_RANGE = 150
+SPWAN_DIST = 200
+SPWAN_ALTITUDE = 20000
+
 GROUND_INJECTION_TIME_ARR = 2
 GROUND_INJECTION_TIME_DEP = 2
 CRUISE_INJECTION_TIME = 5
-SPWAN_DIST = 200
-SPWAN_ALTITUDE = 20000
+
 MIN_SEPARATION = 10 #KM
 
 current_dir = os.getcwd()
@@ -212,9 +217,18 @@ class Common:
               Common.Prev_Callsign = icao
               livery_found = True
               break
-      
-      
-      
+
+      if livery_found == False and USE_AIG_LIVERY == True:  
+        tree = ET.parse('AIG.vmr')
+        root_AIG = tree.getroot()
+        for model_match_rule in root_AIG.findall('ModelMatchRule'):
+          # Check if the TypeCode matches
+          if typecode == model_match_rule.get('TypeCode') and icao == model_match_rule.get('CallsignPrefix'):
+              model_name_cur = (model_match_rule.get('ModelName')).split("//")
+              Common.Prev_Callsign = icao
+              livery_found = True
+              break
+
       if livery_found == False:
         # Iterate over all ModelMatchRule elements
         for model_match_rule in root_Fsltl.findall('ModelMatchRule'):
@@ -231,9 +245,19 @@ class Common:
           if typecode == model_match_rule.get('TypeCode') and Common.Prev_Callsign == model_match_rule.get('CallsignPrefix'):
               model_name_cur = (model_match_rule.get('ModelName')).split("//")
               livery_found = True
-              break   
+              break
 
-      model_name = model_name_cur[0]
+      if livery_found == False and USE_AIG_LIVERY == True:
+        # Iterate over all ModelMatchRule elements
+        for model_match_rule in root_AIG.findall('ModelMatchRule'):
+          # Check if the TypeCode matches
+          if typecode == model_match_rule.get('TypeCode') and Common.Prev_Callsign == model_match_rule.get('CallsignPrefix'):
+              model_name_cur = (model_match_rule.get('ModelName')).split("//")
+              livery_found = True
+              break     
+
+      model_name = random.choice(model_name_cur)
+
     except:
       print("Error in flight matching")
   
@@ -358,15 +382,15 @@ class Common:
             Departure.FR24_Departure_Traffic = pd.DataFrame(columns=['Estimate_time', 'Scheduled_time', "Call","des", "Type","Reg",'Ocio',"Src_ICAO","Des_ICAO","Local_depart_time"])
             Departure.Departure_Index = 0
            
-            Departure.Get_Departure(DES_AIRPORT_IACO,100)
-            Departure.Inject_Parked_Traffic()
-            Departure.Assign_Flt_plan(DES_ACTIVE_RUNWAY)
-            Departure.Departure_Index += 1
-
             Arrival.Get_Arrival(DES_AIRPORT_IACO,100)
             Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
             Arrival.Arrival_Index += 1
-          
+
+
+            Departure.Get_Departure(DES_AIRPORT_IACO,100)
+            Departure.Inject_Parked_Traffic()
+            Departure.Assign_Flt_plan(DES_ACTIVE_RUNWAY)
+            Departure.Departure_Index += 1          
             Common.Retry_DES += 1             #Retry only once if Flight Radar data is available
           
           else:
@@ -628,7 +652,7 @@ class Cruise:
         result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
         Common.Global_req_id+=1
         time.sleep(2)
-        if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
+        if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
           sm.AIAircraftAirspeed(SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0],float(Speed))
       except:
         print("Cannot Inject Cruise Flight")
@@ -662,7 +686,7 @@ class Cruise:
           result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
           Common.Global_req_id+=1
           time.sleep(2)
-          if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
+          if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
             sm.AIAircraftAirspeed(SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0],500)
         except:
           print("Cannot create Arrival Des Cruise flight plan")  
@@ -696,7 +720,7 @@ class Cruise:
           result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
           Common.Global_req_id+=1
           time.sleep(2)
-          if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
+          if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
             sm.AIAircraftAirspeed(SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0],500)
         except:
           print("Cannot create Arrival src Cruise flight plan")  
@@ -722,34 +746,27 @@ class Cruise:
       qry_str = '''SELECT"_rowid_",* FROM "main"."waypoint" WHERE "laty" > '''  + str(int(Lat)-3) + ''' AND "laty" < '''  + str(int(Lat) + 3) + ''' AND "lonx" > '''  + str(int(Lon)-3) + '''  AND "lonx" < '''  + str(int(Lon) + 3) + ''' '''
       way_df = pd.read_sql(sql=qry_str, con=conn.connection)
 
+    R = 6371.0
+    distance = random.uniform(2, 50)
+    bearing = random.uniform(0, 2 * math.pi)
 
-    point1 = (Lat,Lon)
-    df_nearest_waypoint = pd.DataFrame()
-    df_nearest_waypoint_list = []
-    for waypoint in way_df.iterrows():
-        point2 = (float(waypoint[1]["laty"]),float(waypoint[1]["lonx"]))
-        Dis = geodesic(point1, point2).km
-        if Dis > 2 and Dis < 50:
-          df_nearest_waypoint_list.append(waypoint)
-    
-    if len(df_nearest_waypoint_list) < 5:
-      df_nearest_waypoint = pd.DataFrame()
-      df_nearest_waypoint_list = []
-      for waypoint in way_df.iterrows():
-          point2 = (float(waypoint[1]["laty"]),float(waypoint[1]["lonx"]))
-          Dis = geodesic(point1, point2).km
-          if Dis > 2 and Dis < 100:
-            df_nearest_waypoint_list.append(waypoint)
-    
-    if len(df_nearest_waypoint_list) > 0:
-      df_nearest_waypoint = random.choice(df_nearest_waypoint_list) 
-      waypoint_Pos = Common.format_coordinates(float(df_nearest_waypoint[1]["laty"]),float(df_nearest_waypoint[1]["lonx"]),float(crusing_alt))
-      waypoint_id = df_nearest_waypoint[1]["ident"]
-      waypoint_reg = df_nearest_waypoint[1]["region"]
-    else:
-      print("No waypoint in Radius of 100 KM")
+    lat_rad = math.radians(Lat)
+    lon_rad = math.radians(Lon)
 
-    
+    # Calculate new latitude and longitude
+    new_lat_rad = math.asin(math.sin(lat_rad) * math.cos(distance / R) + math.cos(lat_rad) * math.sin(distance / R) * math.cos(bearing))
+    new_lon_rad = lon_rad + math.atan2(math.sin(bearing) * math.sin(distance / R) * math.cos(lat_rad),
+                                       math.cos(distance / R) - math.sin(lat_rad) * math.sin(new_lat_rad))
+
+    # Convert radians back to degrees
+    new_lat = math.degrees(new_lat_rad)
+    new_lon = math.degrees(new_lon_rad)
+
+    waypoint_Pos = Common.format_coordinates(float(new_lat),float(new_lon),float(crusing_alt))
+    waypoint_id = "USERWP"
+    waypoint_reg = "USER"
+
+
     
     fln_plan = \
 """<?xml version="1.0" encoding="UTF-8"?>
@@ -1144,7 +1161,7 @@ class Arrival:
     for index,waypoint in Injection_Waypoint.iterrows():
       if (len(Injection_Waypoint) - (Arrival.Arrival_Index + 1)) == index and waypoint["dis"] > 25:
         inject_index = index + 1
-        print(waypoint["waypoint"])
+        #print(waypoint["waypoint"])
   
     return inject_index
 
@@ -1195,7 +1212,7 @@ class Arrival:
           result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(Call[2:]),current_dir + "/fln_plan_arr",float(inject_index),False,Req_Id)
           Common.Global_req_id+=1
           time.sleep(2)
-          if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0] != 0:
+          if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
               sm.AIAircraftAirspeed(SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0],600)
         except:
           print("Cannot create Arrival flight plan")
@@ -1244,7 +1261,8 @@ class Arrival:
             final_speed = float(Airspeed) - 50
           if final_speed < 50:
             final_speed = 50
-          sm.AIAircraftAirspeed(flight["Obj_Id"],final_speed)
+          if flight['Obj_Id'] > 1:
+            sm.AIAircraftAirspeed(flight["Obj_Id"],final_speed)
       except:
         print("Unable to set speed of aircraft on runway")
 
@@ -1279,14 +1297,16 @@ class Arrival:
                 # Example of speed adjustment if separation is too small (adjust as needed)
                 if separation < MIN_SEPARATION:
                   if abs(bearing1_to_2 - heading1) < 45:  # Aircraft 2 is ahead of Aircraft 1 if bearing matches heading
-                      speed_required = max(130,int(speed2 - required_relative_speed))
-                      sm.AIAircraftAirspeed(df.iloc[i]['Obj_Id'],speed_required)
-                      #print(f"Aircraft {df.iloc[j]['Call']} is ahead of Aircraft {df.iloc[i]['Call']} required airspeed adjustment: {speed_required} km/h  separation: {separation} km")
+                      speed_required = max(10,int(speed2 - required_relative_speed))
+                      if df.iloc[i]['Obj_Id'] > 1:
+                        sm.AIAircraftAirspeed(df.iloc[i]['Obj_Id'],speed_required)
+                        #print(f"Aircraft {df.iloc[j]['Call']} is ahead of Aircraft {df.iloc[i]['Call']} required airspeed adjustment: {speed_required} km/h  separation: {separation} km")
                   
                   elif abs(bearing2_to_1 - heading2) < 45:  # Aircraft 1 is ahead of Aircraft 2 if bearing matches heading
-                      speed_required = max(130,int(speed1 - required_relative_speed))
-                      sm.AIAircraftAirspeed(df.iloc[j]['Obj_Id'],speed_required)
-                      #print(f"Aircraft {df.iloc[i]['Call']} is ahead of Aircraft {df.iloc[j]['Call']} required airspeed adjustment: {speed_required} km/h  separation: {separation} km")
+                      speed_required = max(10,int(speed1 - required_relative_speed))
+                      if df.iloc[i]['Obj_Id'] > 1:
+                        sm.AIAircraftAirspeed(df.iloc[j]['Obj_Id'],speed_required)
+                        #print(f"Aircraft {df.iloc[i]['Call']} is ahead of Aircraft {df.iloc[j]['Call']} required airspeed adjustment: {speed_required} km/h  separation: {separation} km")
                     
 
 class Departure:
@@ -1617,3 +1637,7 @@ Common.Run()
 #Arrival.Create_flight_plan_arr("VARP","EDDF","07R")
 #Arrival.Create_flight_plan_arr("VOHS","VABB","27")
 #Departure.Create_flight_plan_Dep("NZAA","SCIP","05R")
+
+
+
+#Cruise.Create_flt_Plan("NZAA","SCIP",float(-35.173808),float(-161.3815),float(400),float(5000))
