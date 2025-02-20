@@ -12,6 +12,7 @@ import re
 from datetime import datetime,timedelta
 import warnings
 from geopy.distance import geodesic
+from geopy import Point
 import random
 import xml.etree.ElementTree as ET
 import time
@@ -27,7 +28,7 @@ import math
 warnings.filterwarnings('ignore')
 
 
-flt_plan = "IFR Frankfurt Main (EDDF) to Munich Airport (EDDM).pln"
+flt_plan = ""
 
 
 SRC_AIRPORT_IACO = ""
@@ -96,17 +97,18 @@ class Common:
   def Get_Flight_plan():
     global SRC_AIRPORT_IACO,DES_AIRPORT_IACO,SRC_ACTIVE_RUNWAY,DES_ACTIVE_RUNWAY
 
-    response = requests.get("https://www.simbrief.com/api/xml.fetcher.php?username=" + config.config["simbrief_username"])
-
-    xml_data = response.text
-    
-    root = ET.fromstring(xml_data)
-    # Extract information from the XML
-    SRC_AIRPORT_IACO = root.find('api_params/orig').text
-    DES_AIRPORT_IACO = root.find('api_params/dest').text
-    Route = root.find('api_params/route').text
-    SRC_ACTIVE_RUNWAY = root.find('api_params/origrwy').text
-    DES_ACTIVE_RUNWAY = root.find('api_params/destrwy').text
+    if SRC_ACTIVE_RUNWAY == "" or DES_ACTIVE_RUNWAY == "" or SRC_AIRPORT_IACO == "" or DES_AIRPORT_IACO == "":
+      response = requests.get("https://www.simbrief.com/api/xml.fetcher.php?username=" + config.config["simbrief_username"])
+  
+      xml_data = response.text
+      
+      root = ET.fromstring(xml_data)
+      # Extract information from the XML
+      SRC_AIRPORT_IACO = root.find('api_params/orig').text
+      DES_AIRPORT_IACO = root.find('api_params/dest').text
+      Route = root.find('api_params/route').text
+      SRC_ACTIVE_RUNWAY = root.find('api_params/origrwy').text
+      DES_ACTIVE_RUNWAY = root.find('api_params/destrwy').text
 
     
     if SRC_ACTIVE_RUNWAY == "" or DES_ACTIVE_RUNWAY == "" or SRC_AIRPORT_IACO == "" or DES_AIRPORT_IACO == "":
@@ -285,6 +287,36 @@ class Common:
 
     #print(SimConnect.MSFS_User_Aircraft)
 
+  def CopyArrivalCruise(airport):
+    try:
+      for index, flight in SimConnect.MSFS_Cruise_Traffic.iterrows(): 
+        last_element = len(SimConnect.MSFS_AI_Arrival_Traffic)
+        Estimate_time = 0.0
+        Call = flight["Call"]
+        Type = flight["Type"]
+        Src  = flight["Src_ICAO"]
+        Des = flight["Des_ICAO"]
+        Reg = "INV"
+        Cur_Lat = flight["Lat"]
+        Cur_Log = flight["Lon"]
+        Prv_Lat = 0.0
+        Prv_Log = 0.0
+        Par_log = 0.0
+        Par_lat = 0.0
+        altitude = flight["Altitude"]
+        Stuck = 0
+        Req_Id = flight["Req_Id"]
+        Obj_Id = flight["Obj_Id"]
+        Airspeed = flight["Speed"]
+        Landing_light = 0.0
+        ON_Ground = 0.0
+        Heading = 0.0
+        Gear = 0.0
+        if Des == airport:
+          SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Heading,Gear,Req_Id,Obj_Id] 
+    except:
+      print("Unable to copy Arrival Cruise to Arrival")
+
   def Run():
         
     Common.Get_Flight_plan()
@@ -412,7 +444,8 @@ class Common:
           
           if min % 3 == 0 and Common.Shift_Src_Cruise == True:
             Cruise.Check_Traffic_Cruise()
-            Common.Shift_Src_Cruise = False   
+            Common.Shift_Src_Cruise = False
+            Common.CopyArrivalCruise(DES_AIRPORT_IACO)
         
         # if User aircraft is Crusing
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Altitude"] > CRUISE_ALTITUDE and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] > DES_GROUND_RANGE:   
@@ -1062,30 +1095,23 @@ class Arrival:
         </ATCWaypoint>\n"""
   	
    
-    if first_way_point == 1 and Num_Waypoint < 2:
-      with Common.engine_waypoint_db.connect() as conn:
-          qry_str = '''SELECT"_rowid_",* FROM "main"."waypoint" WHERE "laty" > '''  + str(int(first_way_lat)-3) + ''' AND "laty" < '''  + str(int(first_way_lat) + 3) + ''' AND "lonx" > '''  + str(int(first_way_lon)-3) + '''  AND "lonx" < '''  + str(int(first_way_lon) + 3) + ''' AND "type" LIKE '%RNAV%' '''
-          way_df = pd.read_sql(sql=qry_str, con=conn.connection)
-    
-      point1 = (first_way_lat,first_way_lon)
-
-      df_nearest_waypoint = pd.DataFrame()
-      pre_dis = 9999999999999999
-      for waypoint in way_df.iterrows():
-          point2 = (float(waypoint[1]["laty"]),float(waypoint[1]["lonx"]))
-          Dis = geodesic(point1, point2).km
-          Dis_airport = geodesic((float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"])), point2).km
-          if Dis< pre_dis and Dis > 2 and Dis < 100 and Dis_airport > 25:
-            df_nearest_waypoint = waypoint
-            pre_dis = Dis
-
-      src_waypoint_Pos = Common.format_coordinates(float(df_nearest_waypoint[1]["laty"]),float(df_nearest_waypoint[1]["lonx"]),float(7000))
-      src_waypoint_id = df_nearest_waypoint[1]["ident"]
-      src_waypoint_reg = df_nearest_waypoint[1]["region"]
+    if Num_Waypoint < 1:
+      # Define the source and destination points
+      source_point = Point(float(src_df.iloc[-1]["laty"]),float(src_df.iloc[-1]["lonx"]))
+      destination_point = Point(float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]))
+      lat1 = float(src_df.iloc[-1]["laty"])
+      lon1 = float(src_df.iloc[-1]["lonx"])
+      lat2 = float(des_df.iloc[-1]["laty"])
+      lon2 = float(des_df.iloc[-1]["lonx"])
+      # Calculate the bearing (direction) from source to destination
+      bearing = bearing = math.atan2(math.sin(lon2 - lon1) * math.cos(lat2), math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(lon2 - lon1))
+      # Move 25 km from the source point towards the destination
+      new_point = geodesic(source_point, destination_point).destination(destination_point,bearing, distance=25)
+      src_waypoint_Pos = Common.format_coordinates(new_point.latitude, new_point.longitude,float(crusing_alt))
+      src_waypoint_id = "USERWP"
+      src_waypoint_reg = "USER"
       first_way_point = 2
-
-    
-    
+          
     with Common.engine_approach_db.connect() as conn:
       qry_str = '''SELECT "_rowid_", * FROM "main"."approach" WHERE "airport_ident" LIKE '%'''+des+'''%' ESCAPE '\\'  AND "runway_name" LIKE '%'''+RW+'''%' AND "heading" IS NOT NULL'''
       Way_RW_Heading = pd.read_sql(sql=qry_str, con=conn.connection)
@@ -1297,13 +1323,13 @@ class Arrival:
                 # Example of speed adjustment if separation is too small (adjust as needed)
                 if separation < MIN_SEPARATION:
                   if abs(bearing1_to_2 - heading1) < 45:  # Aircraft 2 is ahead of Aircraft 1 if bearing matches heading
-                      speed_required = max(10,int(speed2 - required_relative_speed))
+                      speed_required = max(50,int(speed2 - required_relative_speed))
                       if df.iloc[i]['Obj_Id'] > 1:
                         sm.AIAircraftAirspeed(df.iloc[i]['Obj_Id'],speed_required)
                         #print(f"Aircraft {df.iloc[j]['Call']} is ahead of Aircraft {df.iloc[i]['Call']} required airspeed adjustment: {speed_required} km/h  separation: {separation} km")
                   
                   elif abs(bearing2_to_1 - heading2) < 45:  # Aircraft 1 is ahead of Aircraft 2 if bearing matches heading
-                      speed_required = max(10,int(speed1 - required_relative_speed))
+                      speed_required = max(50,int(speed1 - required_relative_speed))
                       if df.iloc[i]['Obj_Id'] > 1:
                         sm.AIAircraftAirspeed(df.iloc[j]['Obj_Id'],speed_required)
                         #print(f"Aircraft {df.iloc[i]['Call']} is ahead of Aircraft {df.iloc[j]['Call']} required airspeed adjustment: {speed_required} km/h  separation: {separation} km")
@@ -1635,7 +1661,7 @@ class Departure:
 Common.Run()
 
 #Arrival.Create_flight_plan_arr("VARP","EDDF","07R")
-#Arrival.Create_flight_plan_arr("VOHS","VABB","27")
+#Arrival.Create_flight_plan_arr("LEMD","SAEZ","11")
 #Departure.Create_flight_plan_Dep("NZAA","SCIP","05R")
 
 
