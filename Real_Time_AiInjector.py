@@ -28,7 +28,7 @@ import math
 warnings.filterwarnings('ignore')
 
 
-flt_plan = "IFR Frankfurt Main (EDDF) to Munich Airport (EDDM).pln"
+flt_plan = ""
 
 
 SRC_AIRPORT_IACO = ""
@@ -97,17 +97,18 @@ class Common:
   def Get_Flight_plan():
     global SRC_AIRPORT_IACO,DES_AIRPORT_IACO,SRC_ACTIVE_RUNWAY,DES_ACTIVE_RUNWAY
 
-    response = requests.get("https://www.simbrief.com/api/xml.fetcher.php?username=" + config.config["simbrief_username"])
-
-    xml_data = response.text
-    
-    root = ET.fromstring(xml_data)
-    # Extract information from the XML
-    SRC_AIRPORT_IACO = root.find('api_params/orig').text
-    DES_AIRPORT_IACO = root.find('api_params/dest').text
-    Route = root.find('api_params/route').text
-    SRC_ACTIVE_RUNWAY = root.find('api_params/origrwy').text
-    DES_ACTIVE_RUNWAY = root.find('api_params/destrwy').text
+    if SRC_ACTIVE_RUNWAY == "" or DES_ACTIVE_RUNWAY == "" or SRC_AIRPORT_IACO == "" or DES_AIRPORT_IACO == "":
+      response = requests.get("https://www.simbrief.com/api/xml.fetcher.php?username=" + config.config["simbrief_username"])
+  
+      xml_data = response.text
+      
+      root = ET.fromstring(xml_data)
+      # Extract information from the XML
+      SRC_AIRPORT_IACO = root.find('api_params/orig').text
+      DES_AIRPORT_IACO = root.find('api_params/dest').text
+      Route = root.find('api_params/route').text
+      SRC_ACTIVE_RUNWAY = root.find('api_params/origrwy').text
+      DES_ACTIVE_RUNWAY = root.find('api_params/destrwy').text
 
     
     if SRC_ACTIVE_RUNWAY == "" or DES_ACTIVE_RUNWAY == "" or SRC_AIRPORT_IACO == "" or DES_AIRPORT_IACO == "":
@@ -287,32 +288,34 @@ class Common:
     #print(SimConnect.MSFS_User_Aircraft)
 
   def CopyArrivalCruise(airport):
-    for index, flight in SimConnect.MSFS_Cruise_Traffic.iterrows(): 
-      last_element = len(SimConnect.MSFS_AI_Arrival_Traffic)
-      Estimate_time = 0.0
-      Call = flight["Call"]
-      Type = flight["Type"]
-      Src  = flight["Src_ICAO"]
-      Des = flight["Des_ICAO"]
-      Reg = "INV"
-      Cur_Lat = flight["Lat"]
-      Cur_Log = flight["Lon"]
-      Prv_Lat = 0.0
-      Prv_Log = 0.0
-      Par_log = 0.0
-      Par_lat = 0.0
-      altitude = flight["Altitude"]
-      Stuck = 0
-      Req_Id = flight["Req_Id"]
-      Obj_Id = flight["Obj_Id"]
-      Airspeed = flight["Speed"]
-      Landing_light = 0.0
-      ON_Ground = 0.0
-      Heading = 0.0
-      Gear = 0.0
-      if Des == airport:
-        SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Heading,Gear,Req_Id,Obj_Id] 
-
+    try:
+      for index, flight in SimConnect.MSFS_Cruise_Traffic.iterrows(): 
+        last_element = len(SimConnect.MSFS_AI_Arrival_Traffic)
+        Estimate_time = 0.0
+        Call = flight["Call"]
+        Type = flight["Type"]
+        Src  = flight["Src_ICAO"]
+        Des = flight["Des_ICAO"]
+        Reg = "INV"
+        Cur_Lat = flight["Lat"]
+        Cur_Log = flight["Lon"]
+        Prv_Lat = 0.0
+        Prv_Log = 0.0
+        Par_log = 0.0
+        Par_lat = 0.0
+        altitude = flight["Altitude"]
+        Stuck = 0
+        Req_Id = flight["Req_Id"]
+        Obj_Id = flight["Obj_Id"]
+        Airspeed = flight["Speed"]
+        Landing_light = 0.0
+        ON_Ground = 0.0
+        Heading = 0.0
+        Gear = 0.0
+        if Des == airport:
+          SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Heading,Gear,Req_Id,Obj_Id] 
+    except:
+      print("Unable to copy Arrival Cruise to Arrival")
 
   def Run():
         
