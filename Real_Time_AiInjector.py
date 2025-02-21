@@ -81,8 +81,7 @@ class Common:
   Retry_SRC = 0
   Retry_DES = 0
 
-  Prev_Callsign = ""
-  
+ 
   Src_Airport = pd.DataFrame(columns=['Src', 'Lat', "Lon","Altitude"])
   Des_Airport = pd.DataFrame(columns=['Src', 'Lat', "Lon","Altitude"]) 
 
@@ -203,20 +202,22 @@ class Common:
       # Iterate over all ModelMatchRule elements
       for model_match_rule in root_Fsltl.findall('ModelMatchRule'):
         # Check if the TypeCode matches
-        if typecode == model_match_rule.get('TypeCode') and icao == model_match_rule.get('CallsignPrefix'):
+        if icao == model_match_rule.get('CallsignPrefix'):
             model_name_cur = (model_match_rule.get('ModelName')).split("//")
-            Common.Prev_Callsign = icao
-            livery_found = True
-            break
+            if model_match_rule.get('TypeCode') == typecode:
+              model_name_cur = (model_match_rule.get('ModelName')).split("//")
+              livery_found = True
+              break
 
       if livery_found == False and USE_FSTRAFFIC_LIVERY == True:  
         tree = ET.parse('FSTraffic.vmr')
         root_FSTraffic = tree.getroot()
         for model_match_rule in root_FSTraffic.findall('ModelMatchRule'):
           # Check if the TypeCode matches
-          if typecode == model_match_rule.get('TypeCode') and icao == model_match_rule.get('CallsignPrefix'):
+          if icao == model_match_rule.get('CallsignPrefix'):
+            model_name_cur = (model_match_rule.get('ModelName')).split("//")
+            if model_match_rule.get('TypeCode') == typecode:
               model_name_cur = (model_match_rule.get('ModelName')).split("//")
-              Common.Prev_Callsign = icao
               livery_found = True
               break
 
@@ -225,40 +226,15 @@ class Common:
         root_AIG = tree.getroot()
         for model_match_rule in root_AIG.findall('ModelMatchRule'):
           # Check if the TypeCode matches
-          if typecode == model_match_rule.get('TypeCode') and icao == model_match_rule.get('CallsignPrefix'):
-              model_name_cur = (model_match_rule.get('ModelName')).split("//")
-              Common.Prev_Callsign = icao
-              livery_found = True
-              break
-
-      if livery_found == False:
-        # Iterate over all ModelMatchRule elements
-        for model_match_rule in root_Fsltl.findall('ModelMatchRule'):
-          # Check if the TypeCode matches
-          if typecode == model_match_rule.get('TypeCode') and Common.Prev_Callsign == model_match_rule.get('CallsignPrefix'):
+          if icao == model_match_rule.get('CallsignPrefix'):
+            model_name_cur = (model_match_rule.get('ModelName')).split("//")
+            if model_match_rule.get('TypeCode') == typecode :
               model_name_cur = (model_match_rule.get('ModelName')).split("//")
               livery_found = True
               break
-          
-      if livery_found == False and USE_FSTRAFFIC_LIVERY == True:
-        # Iterate over all ModelMatchRule elements
-        for model_match_rule in root_FSTraffic.findall('ModelMatchRule'):
-          # Check if the TypeCode matches
-          if typecode == model_match_rule.get('TypeCode') and Common.Prev_Callsign == model_match_rule.get('CallsignPrefix'):
-              model_name_cur = (model_match_rule.get('ModelName')).split("//")
-              livery_found = True
-              break
-
-      if livery_found == False and USE_AIG_LIVERY == True:
-        # Iterate over all ModelMatchRule elements
-        for model_match_rule in root_AIG.findall('ModelMatchRule'):
-          # Check if the TypeCode matches
-          if typecode == model_match_rule.get('TypeCode') and Common.Prev_Callsign == model_match_rule.get('CallsignPrefix'):
-              model_name_cur = (model_match_rule.get('ModelName')).split("//")
-              livery_found = True
-              break     
 
       model_name = random.choice(model_name_cur)
+      #print(model_name)
 
     except:
       print("Error in flight matching")
@@ -1663,7 +1639,5 @@ Common.Run()
 #Arrival.Create_flight_plan_arr("VARP","EDDF","07R")
 #Arrival.Create_flight_plan_arr("LEMD","SAEZ","11")
 #Departure.Create_flight_plan_Dep("NZAA","SCIP","05R")
-
-
-
 #Cruise.Create_flt_Plan("NZAA","SCIP",float(-35.173808),float(-161.3815),float(400),float(5000))
+#Common.Get_flight_match("H2322","32N")
