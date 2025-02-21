@@ -2791,7 +2791,7 @@
 <ModelMatchRule CallsignPrefix="JOS" TypeCode="AT43" ModelName="AIGAIM_DHL De Guatemala ATR 42-300F" /> 
 <ModelMatchRule CallsignPrefix="RTM" TypeCode="AT43" ModelName="AIGAIM_Trans Am Aero Express del Ecuador ATR 42-300F" /> 
 <ModelMatchRule CallsignPrefix="VEC" TypeCode="AT43" ModelName="AIGAIM_Vensecar Internacional ATR 42-300F (TEMP)" /> 
-<ModelMatchRule CallsignPrefix="GCI" TypeCode="AT44" ModelName="AIGAIM_Corpo delle Capitanerie di porto – Guardia costiera ATR 42-400" /> 
+<ModelMatchRule CallsignPrefix="GCI" TypeCode="AT44" ModelName="AIGAIM_Corpo delle Capitanerie di porto Guardia costiera ATR 42-400" /> 
 <ModelMatchRule CallsignPrefix="GTV" TypeCode="AT45" ModelName="AIGAIM_Aerogaviota ATR 42-500" /> 
 <ModelMatchRule CallsignPrefix="EFY" TypeCode="AT45" ModelName="AIGAIM_Easyfly ATR 42-500//AIGAIM_Easyfly ATR 42-500 - Racoon Windshield" /> 
 <ModelMatchRule CallsignPrefix="EFY" TypeCode="AT46" ModelName="AIGAIM_Easyfly ATR 42-600" /> 
