@@ -20,7 +20,6 @@ from Sim_Connect_Custom.SimConnect import SimConnect
 #import SimConnect
 import json
 import requests
-import config
 from haversine import haversine, Unit
 import math
 
@@ -56,10 +55,13 @@ CRUISE_INJECTION_TIME = 5
 
 MIN_SEPARATION = 10 #KM
 
+
+ADBS_key = ""
+ADBS_host = ""
+simbrief_username = ""
+
 current_dir = os.getcwd()
 
-
-sm = SimConnect(library_path=".\Sim_Connect_Custom\SimConnect.dll")
 
 class Common:
    
@@ -92,12 +94,52 @@ class Common:
 
   State_Machine = 0
   
+  def Read_Config_file():
+    global ADBS_key,ADBS_host,simbrief_username
+    global USE_FSTRAFFIC_LIVERY,USE_AIG_LIVERY,MAX_ARRIVAL_AI_FLIGHTS,MAX_DEPARTURE_AI_FLIGHTS,MAX_CRUISE_AI_FLIGHTS
+    global MAX_PARKED_AI_FLIGHTS,CRUISE_ALTITUDE,SRC_GROUND_RANGE,DES_GROUND_RANGE,SPWAN_DIST
+    global SPWAN_ALTITUDE,GROUND_INJECTION_TIME_ARR,GROUND_INJECTION_TIME_DEP,CRUISE_INJECTION_TIME,MIN_SEPARATION
+    
+    try:
+      with open('config_user.json', 'r') as file:
+        data = json.load(file)
+        ADBS_key = data["key"]
+        ADBS_host = data["host"]
+        simbrief_username = data["simbrief_username"]
+    except:
+      ("print config_user.json file not found")  
+    
+    try:
+      with open('config_msfs.json', 'r') as file:
+        data = json.load(file)
+        USE_FSTRAFFIC_LIVERY = bool(data["USE_FSTRAFFIC_LIVERY"])
+        USE_AIG_LIVERY = bool(data["USE_AIG_LIVERY"])
+        
+        MAX_ARRIVAL_AI_FLIGHTS = int(data["MAX_ARRIVAL_AI_FLIGHTS"])
+        MAX_DEPARTURE_AI_FLIGHTS = int(data["MAX_DEPARTURE_AI_FLIGHTS"])
+        MAX_CRUISE_AI_FLIGHTS = int(data["MAX_CRUISE_AI_FLIGHTS"])
+        MAX_PARKED_AI_FLIGHTS = int(data["MAX_PARKED_AI_FLIGHTS"])
+        
+        CRUISE_ALTITUDE = int(data["CRUISE_ALTITUDE"])
+        SRC_GROUND_RANGE = int(data["SRC_GROUND_RANGE"])
+        DES_GROUND_RANGE = int(data["DES_GROUND_RANGE"])
+        SPWAN_DIST = int(data["SPWAN_DIST"])
+        SPWAN_ALTITUDE = int(data["SPWAN_ALTITUDE"])
+        
+        GROUND_INJECTION_TIME_ARR = int(data["GROUND_INJECTION_TIME_ARR"])
+        GROUND_INJECTION_TIME_DEP = int(data["GROUND_INJECTION_TIME_DEP"])
+        CRUISE_INJECTION_TIME = int(data["CRUISE_INJECTION_TIME"])
+        
+        MIN_SEPARATION = int(data["MIN_SEPARATION"])
+    except:
+      ("print config_msfs.json file not found")  
 
   def Get_Flight_plan():
     global SRC_AIRPORT_IACO,DES_AIRPORT_IACO,SRC_ACTIVE_RUNWAY,DES_ACTIVE_RUNWAY
+    global simbrief_username
 
     if SRC_ACTIVE_RUNWAY == "" or DES_ACTIVE_RUNWAY == "" or SRC_AIRPORT_IACO == "" or DES_AIRPORT_IACO == "":
-      response = requests.get("https://www.simbrief.com/api/xml.fetcher.php?username=" + config.config["simbrief_username"])
+      response = requests.get("https://www.simbrief.com/api/xml.fetcher.php?username=" + simbrief_username)
   
       xml_data = response.text
       
@@ -294,7 +336,9 @@ class Common:
       print("Unable to copy Arrival Cruise to Arrival")
 
   def Run():
-        
+
+    Common.Read_Config_file()
+
     Common.Get_Flight_plan()
 
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+SRC_AIRPORT_IACO+"""%'"""
@@ -589,11 +633,11 @@ class Cruise:
 
   
   def Get_Cruise_Traffic_ADS_S(lat,lon,dist):
-    
+    global ADBS_host,ADBS_key
     url = "https://adsbx-flight-sim-traffic.p.rapidapi.com/api/aircraft/json/lat/" + str(lat) + "/lon/" + str(lon) +"/dist/" + str(dist) +"/"
     headers = {
-    	"x-rapidapi-key": config.config["key"],
-    	"x-rapidapi-host": config.config["host"]
+    	"x-rapidapi-key": ADBS_key,
+    	"x-rapidapi-host": ADBS_host
     }
     response = requests.get(url, headers=headers)
     traffic_data = response.json()
@@ -859,14 +903,15 @@ class Arrival:
   Arrival_Index = 0
 
   def Get_Arrival_ADB_S(lat,lon,dist):
-    
+    global ADBS_key,ADBS_host
+
     print("------------Get Arrival ADB-S Traffic---------------------")
 
     url = "https://adsbx-flight-sim-traffic.p.rapidapi.com/api/aircraft/json/lat/" + str(lat) + "/lon/" + str(lon) +"/dist/" + str(dist) +"/"
     
     headers = {
-    	"x-rapidapi-key": config.config["key"],
-    	"x-rapidapi-host": config.config["host"]
+    	"x-rapidapi-key": ADBS_key,
+    	"x-rapidapi-host": ADBS_host
     }
     response = requests.get(url, headers=headers)
     traffic_data = response.json()
@@ -1634,6 +1679,7 @@ class Departure:
     #print(SimConnect.MSFS_AI_Departure_Traffic)
 
 
+sm = SimConnect(library_path=".\Sim_Connect_Custom\SimConnect.dll")
 Common.Run()
 
 #Arrival.Create_flight_plan_arr("VARP","EDDF","07R")
