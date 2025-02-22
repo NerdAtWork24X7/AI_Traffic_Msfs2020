@@ -236,48 +236,50 @@ class Common:
       with Common.engine_airline_db.connect() as conn:
         qry_str = '''SELECT "_rowid_",* FROM "main"."mytable" WHERE "iata" LIKE '%'''+IATA_call+'''%' '''
         src_df = pd.read_sql(sql=qry_str, con=conn.connection)
-        icao = src_df.iloc[0]["icao"]
 
-
-      tree = ET.parse('FSLTL_Rules.vmr')
-      root_Fsltl = tree.getroot()
-      # Iterate over all ModelMatchRule elements
-      for model_match_rule in root_Fsltl.findall('ModelMatchRule'):
-        # Check if the TypeCode matches
-        if icao == model_match_rule.get('CallsignPrefix'):
-            model_name_cur = (model_match_rule.get('ModelName')).split("//")
-            if model_match_rule.get('TypeCode') == typecode:
-              model_name_cur = (model_match_rule.get('ModelName')).split("//")
-              livery_found = True
-              break
-
-      if livery_found == False and USE_FSTRAFFIC_LIVERY == True:  
-        tree = ET.parse('FSTraffic.vmr')
-        root_FSTraffic = tree.getroot()
-        for model_match_rule in root_FSTraffic.findall('ModelMatchRule'):
+      for index, icao_iata in src_df.iterrows():
+        icao = icao_iata["icao"]
+        tree = ET.parse('FSLTL_Rules.vmr')
+        root_Fsltl = tree.getroot()
+        # Iterate over all ModelMatchRule elements
+        for model_match_rule in root_Fsltl.findall('ModelMatchRule'):
           # Check if the TypeCode matches
           if icao == model_match_rule.get('CallsignPrefix'):
-            model_name_cur = (model_match_rule.get('ModelName')).split("//")
-            if model_match_rule.get('TypeCode') == typecode:
               model_name_cur = (model_match_rule.get('ModelName')).split("//")
-              livery_found = True
-              break
-
-      if livery_found == False and USE_AIG_LIVERY == True:  
-        tree = ET.parse('AIG.vmr')
-        root_AIG = tree.getroot()
-        for model_match_rule in root_AIG.findall('ModelMatchRule'):
-          # Check if the TypeCode matches
-          if icao == model_match_rule.get('CallsignPrefix'):
-            model_name_cur = (model_match_rule.get('ModelName')).split("//")
-            if model_match_rule.get('TypeCode') == typecode :
+              if model_match_rule.get('TypeCode') == typecode:
+                model_name_cur = (model_match_rule.get('ModelName')).split("//")
+                livery_found = True
+                break
+  
+        if livery_found == False and USE_FSTRAFFIC_LIVERY == True:  
+          tree = ET.parse('FSTraffic.vmr')
+          root_FSTraffic = tree.getroot()
+          for model_match_rule in root_FSTraffic.findall('ModelMatchRule'):
+            # Check if the TypeCode matches
+            if icao == model_match_rule.get('CallsignPrefix'):
               model_name_cur = (model_match_rule.get('ModelName')).split("//")
-              livery_found = True
-              break
-
+              if model_match_rule.get('TypeCode') == typecode:
+                model_name_cur = (model_match_rule.get('ModelName')).split("//")
+                livery_found = True
+                break
+  
+        if livery_found == False and USE_AIG_LIVERY == True:  
+          tree = ET.parse('AIG.vmr')
+          root_AIG = tree.getroot()
+          for model_match_rule in root_AIG.findall('ModelMatchRule'):
+            # Check if the TypeCode matches
+            if icao == model_match_rule.get('CallsignPrefix'):
+              model_name_cur = (model_match_rule.get('ModelName')).split("//")
+              if model_match_rule.get('TypeCode') == typecode :
+                model_name_cur = (model_match_rule.get('ModelName')).split("//")
+                livery_found = True
+                break
+        
+        if livery_found == True:
+          break          
       model_name = random.choice(model_name_cur)
       #print(model_name)
-
+  
     except:
       print("Error in flight matching")
   
