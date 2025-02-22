@@ -30,26 +30,25 @@ This project reads real-time flight data from Flight Radar 24 and injects it int
 - Create config.py
 
 ##Config
- - Create config.py file and add api keys from ADB-S account
-   - config = {"key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","host" : "adsbx-flight-sim-traffic.p.rapidapi.com", "simbrief_username" : "abc"}
+ - Create config_user.json file and add api keys from ADB-S account
+   - {"key": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx","host" : "adsbx-flight-sim-traffic.p.rapidapi.com", "simbrief_username" : "abc"}
 
 
-## Modify this Parameters to inject traffic at airport
-  # Optional Parameter you can tweak it or keep it as they are
-      - USE_FSTRAFFIC_LIVERY = True
-      - MAX_ARRIVAL_AI_FLIGHTS = 20
-      - MAX_DEPARTURE_AI_FLIGHTS = 20
-      - MAX_CRUISE_AI_FLIGHTS = 20
-      - MAX_PARKED_AI_FLIGHTS = 40
-      - CRUISE_ALTITUDE = 10000
-      - SRC_GROUND_RANGE = 50
-      - DES_GROUND_RANGE = 100
-      - GROUND_INJECTION_TIME_ARR = 2
-      - GROUND_INJECTION_TIME_DEP = 2
-      - CRUISE_INJECTION_TIME = 5
-      - SPWAN_DIST = 200
-      - SPWAN_ALTITUDE = 20000
-      - MIN_SEPARATION = 10 #KM
+## Optional Parameter you can tweak it or keep it as they are in config_msfs.json
+    - USE_FSTRAFFIC_LIVERY = True
+    - MAX_ARRIVAL_AI_FLIGHTS = 20
+    - MAX_DEPARTURE_AI_FLIGHTS = 20
+    - MAX_CRUISE_AI_FLIGHTS = 20
+    - MAX_PARKED_AI_FLIGHTS = 40
+    - CRUISE_ALTITUDE = 10000
+    - SRC_GROUND_RANGE = 50
+    - DES_GROUND_RANGE = 100
+    - GROUND_INJECTION_TIME_ARR = 2
+    - GROUND_INJECTION_TIME_DEP = 2
+    - CRUISE_INJECTION_TIME = 5
+    - SPWAN_DIST = 200
+    - SPWAN_ALTITUDE = 20000
+    - MIN_SEPARATION = 10 #KM
 
 
 
