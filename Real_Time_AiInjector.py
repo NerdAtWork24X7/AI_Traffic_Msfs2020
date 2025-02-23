@@ -505,12 +505,11 @@ class Common:
 
         prev_min = min
       
-      if Common.Shift_Src_Cruise  == False:
-        if Common.State_Machine == 1:
-          Arrival.Check_Traffic_onRunway_Arrival(SRC_ACTIVE_RUNWAY)
-        elif Common.State_Machine == 3:
-          Arrival.Check_Traffic_onRunway_Arrival(DES_ACTIVE_RUNWAY)
-        Arrival.Check_Traffic_MinSeparation()
+      if Common.State_Machine == 1:
+        Arrival.Check_Traffic_onRunway_Arrival(SRC_ACTIVE_RUNWAY)
+      elif Common.State_Machine == 3:
+        Arrival.Check_Traffic_onRunway_Arrival(DES_ACTIVE_RUNWAY)
+      Arrival.Check_Traffic_MinSeparation()
       
       time.sleep(2)
 
