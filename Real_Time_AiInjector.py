@@ -339,6 +339,9 @@ class Common:
       print("Unable to copy Arrival Cruise to Arrival")
 
   def Run():
+    global SRC_AIRPORT_IACO,DES_AIRPORT_IACO,SRC_ACTIVE_RUNWAY,DES_ACTIVE_RUNWAY,SRC_GROUND_RANGE,DES_GROUND_RANGE
+    global GROUND_INJECTION_TIME_DEP,GROUND_INJECTION_TIME_ARR,MAX_DEPARTURE_AI_FLIGHTS,MAX_ARRIVAL_AI_FLIGHTS
+    global CRUISE_ALTITUDE,SRC_GROUND_RANGE,CRUISE_INJECTION_TIME,MAX_CRUISE_AI_FLIGHTS
 
     Common.Read_Config_file()
 
@@ -386,7 +389,7 @@ class Common:
         Common.Get_User_Aircraft()
                
         # if User aircraft within 50KM of Departure airport
-        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SRC_GROUND_RANGE and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"]:
+        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SRC_GROUND_RANGE and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]  < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"]:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
           Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)  
           Common.State_Machine = 1  
@@ -424,7 +427,7 @@ class Common:
 
         # if User aircraft within 100KM of Arrival airport  
         if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < DES_GROUND_RANGE and \
-          SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] :
+          SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"]  < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
           Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)
           Common.State_Machine = 3
@@ -967,7 +970,6 @@ class Arrival:
     prev_time = current_datetime.strftime('%H')
     for flight in flight_elements:
       flight_info = flight.text 
-      print(flight_info)
       if  prev_lin != flight_info:
         flight_info_list = flight_info.split("\n") 
                 
