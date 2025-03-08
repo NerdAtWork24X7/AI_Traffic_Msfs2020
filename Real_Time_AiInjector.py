@@ -1,8 +1,8 @@
 import os
 import pandas as pd
 import time
-#from selenium import webdriver
-import undetected_chromedriver as uc
+from selenium import webdriver as uc
+#import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from sqlalchemy import create_engine, text
@@ -73,6 +73,8 @@ class Common:
   chrome_options.add_argument('--disable-gpu')
   chrome_options.add_argument('--enable-unsafe-swiftshader')
   chrome_options.add_argument('log-level=3')
+  chrome_options.add_argument('-uc')
+
    
   engine_airport_db = create_engine('sqlite:///./Database/Airport.sqlite')
   engine_airline_db = create_engine('sqlite:///./Database/airline_icao.sqlite')
