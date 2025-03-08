@@ -1,7 +1,8 @@
 import os
 import pandas as pd
 import time
-from selenium import webdriver
+#from selenium import webdriver
+import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from sqlalchemy import create_engine, text
@@ -385,7 +386,7 @@ class Common:
         Common.Get_User_Aircraft()
                
         # if User aircraft within 50KM of Departure airport
-        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SRC_GROUND_RANGE:
+        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SRC_GROUND_RANGE and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"]:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
           Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)  
           Common.State_Machine = 1  
@@ -422,7 +423,8 @@ class Common:
               Common.Skip_injection += 1 
 
         # if User aircraft within 100KM of Arrival airport  
-        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < DES_GROUND_RANGE:
+        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < DES_GROUND_RANGE and \
+          SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] :
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
           Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)
           Common.State_Machine = 3
@@ -522,7 +524,8 @@ class Cruise:
   Cruise_Arr_src_Index = 0
 
   def Create_Cruise_Traffic_database_Arrival_des(airport,max_cruise):
-    driver = webdriver.Chrome(options=Common.chrome_options)
+    
+    driver = uc.Chrome(options=Common.chrome_options)
     driver.set_window_size(945, 1012)
     print("------------Get Cruise Arrival FR24 Traffic---------------------")
 
@@ -578,7 +581,7 @@ class Cruise:
 
 
   def Create_Cruise_Traffic_database_Arrival_src(airport,max_cruise):
-    driver = webdriver.Chrome(options=Common.chrome_options)
+    driver = uc.Chrome(options=Common.chrome_options)
     driver.set_window_size(945, 1012)
     print("------------Get Cruise Arrival FR24 Traffic---------------------")
 
@@ -936,7 +939,7 @@ class Arrival:
       
   def Get_Arrival(airport,max_Arrival):
 
-    driver = webdriver.Chrome(options=Common.chrome_options)
+    driver = uc.Chrome(options=Common.chrome_options)
     driver.set_window_size(945, 1012)
     print("------------Get Arrival FR24 Traffic---------------------")
 
@@ -958,12 +961,13 @@ class Arrival:
     next_day_datetime = current_datetime + timedelta(days=1)
 
     flight_elements = driver.find_elements(By.XPATH, "//td")
-  
+ 
     prev_lin = ""
     Check_New_Day = False
     prev_time = current_datetime.strftime('%H')
     for flight in flight_elements:
       flight_info = flight.text 
+      print(flight_info)
       if  prev_lin != flight_info:
         flight_info_list = flight_info.split("\n") 
                 
@@ -1366,7 +1370,7 @@ class Departure:
   def Get_Departure(airport,max_departure):
    
     # Set up the WebDriver (this assumes you have ChromeDriver installed)
-    driver = webdriver.Chrome(options=Common.chrome_options)
+    driver = uc.Chrome(options=Common.chrome_options)
     driver.set_window_size(945, 1012)
     
     print("------------Get Departure FR24 Traffic---------------------")
