@@ -1,6 +1,7 @@
 {
    "USE_FSTRAFFIC_LIVERY" : true,
    "USE_AIG_LIVERY" : true,
+   "USE_FSLTL_LIVERY" : true,
    
    "MAX_ARRIVAL_AI_FLIGHTS" : 30,
    "MAX_DEPARTURE_AI_FLIGHTS" : 30,

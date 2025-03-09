@@ -37,7 +37,7 @@ class AircraftData(ctypes.Structure):
 
 class SimConnect:
 	
-	MSFS_AI_Arrival_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Airspeed","Landing_light","ON_Ground","Heading","Gear","Req_Id","Obj_Id"])
+	MSFS_AI_Arrival_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Airspeed","Landing_light","ON_Ground","Landed","Heading","Gear","Req_Id","Obj_Id"])
 	MSFS_AI_Departure_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Req_Id","Obj_Id"])
 	MSFS_User_Aircraft =  pd.DataFrame(columns=["Cur_Lat","Cur_Log","Altitude","Dis_Src", "Dis_Des","Req_Id","Obj_Id"])
 	MSFS_Cruise_Traffic = pd.DataFrame(columns=["Call","Type","Src","Des","Cur_Lat","Cur_Log","Altitude","Heading","Speed","Flt_plan","Req_Id","Obj_Id"])
