@@ -7,3 +7,4 @@ timezonefinder
 pytz
 tzlocal
 haversine
+undetected-chromedriver

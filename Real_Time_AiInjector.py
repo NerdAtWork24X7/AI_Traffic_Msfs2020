@@ -1,7 +1,8 @@
 import os
 import pandas as pd
 import time
-from selenium import webdriver
+from selenium import webdriver as uc
+#import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from sqlalchemy import create_engine, text
@@ -37,6 +38,7 @@ DES_ACTIVE_RUNWAY = ""
 
 USE_FSTRAFFIC_LIVERY = True
 USE_AIG_LIVERY = True
+USE_FSLTL_LIVERY = True
 
 MAX_ARRIVAL_AI_FLIGHTS = 30
 MAX_DEPARTURE_AI_FLIGHTS = 30
@@ -72,6 +74,8 @@ class Common:
   chrome_options.add_argument('--disable-gpu')
   chrome_options.add_argument('--enable-unsafe-swiftshader')
   chrome_options.add_argument('log-level=3')
+  chrome_options.add_argument('-uc')
+
    
   engine_airport_db = create_engine('sqlite:///./Database/Airport.sqlite')
   engine_airline_db = create_engine('sqlite:///./Database/airline_icao.sqlite')
@@ -97,7 +101,7 @@ class Common:
   def Read_Config_file():
     global ADBS_key,ADBS_host,simbrief_username
     global USE_FSTRAFFIC_LIVERY,USE_AIG_LIVERY,MAX_ARRIVAL_AI_FLIGHTS,MAX_DEPARTURE_AI_FLIGHTS,MAX_CRUISE_AI_FLIGHTS
-    global MAX_PARKED_AI_FLIGHTS,CRUISE_ALTITUDE,SRC_GROUND_RANGE,DES_GROUND_RANGE,SPWAN_DIST
+    global MAX_PARKED_AI_FLIGHTS,CRUISE_ALTITUDE,SRC_GROUND_RANGE,DES_GROUND_RANGE,SPWAN_DIST,USE_FSLTL_LIVERY
     global SPWAN_ALTITUDE,GROUND_INJECTION_TIME_ARR,GROUND_INJECTION_TIME_DEP,CRUISE_INJECTION_TIME,MIN_SEPARATION
     
     try:
@@ -114,6 +118,7 @@ class Common:
         data = json.load(file)
         USE_FSTRAFFIC_LIVERY = bool(data["USE_FSTRAFFIC_LIVERY"])
         USE_AIG_LIVERY = bool(data["USE_AIG_LIVERY"])
+        USE_FSLTL_LIVERY = bool(data["USE_FSLTL_LIVERY"])
         
         MAX_ARRIVAL_AI_FLIGHTS = int(data["MAX_ARRIVAL_AI_FLIGHTS"])
         MAX_DEPARTURE_AI_FLIGHTS = int(data["MAX_DEPARTURE_AI_FLIGHTS"])
@@ -226,7 +231,7 @@ class Common:
  
 
   def Get_flight_match(callsign,typecode):
-    
+    global USE_FSLTL_LIVERY,USE_AIG_LIVERY,USE_FSTRAFFIC_LIVERY
     #Default Livaery
     model_name = "FSLTL_FSPXAI_B788_Airindia"
     
@@ -239,30 +244,6 @@ class Common:
 
       for index, icao_iata in src_df.iterrows():
         icao = icao_iata["icao"]
-        tree = ET.parse('FSLTL_Rules.vmr')
-        root_Fsltl = tree.getroot()
-        # Iterate over all ModelMatchRule elements
-        for model_match_rule in root_Fsltl.findall('ModelMatchRule'):
-          # Check if the TypeCode matches
-          if icao == model_match_rule.get('CallsignPrefix'):
-              model_name_cur = (model_match_rule.get('ModelName')).split("//")
-              if model_match_rule.get('TypeCode') == typecode:
-                model_name_cur = (model_match_rule.get('ModelName')).split("//")
-                livery_found = True
-                break
-  
-        if livery_found == False and USE_FSTRAFFIC_LIVERY == True:  
-          tree = ET.parse('FSTraffic.vmr')
-          root_FSTraffic = tree.getroot()
-          for model_match_rule in root_FSTraffic.findall('ModelMatchRule'):
-            # Check if the TypeCode matches
-            if icao == model_match_rule.get('CallsignPrefix'):
-              model_name_cur = (model_match_rule.get('ModelName')).split("//")
-              if model_match_rule.get('TypeCode') == typecode:
-                model_name_cur = (model_match_rule.get('ModelName')).split("//")
-                livery_found = True
-                break
-  
         if livery_found == False and USE_AIG_LIVERY == True:  
           tree = ET.parse('AIG.vmr')
           root_AIG = tree.getroot()
@@ -275,6 +256,31 @@ class Common:
                 livery_found = True
                 break
         
+        if livery_found == False and USE_FSTRAFFIC_LIVERY == True:  
+          tree = ET.parse('FSTraffic.vmr')
+          root_FSTraffic = tree.getroot()
+          for model_match_rule in root_FSTraffic.findall('ModelMatchRule'):
+            # Check if the TypeCode matches
+            if icao == model_match_rule.get('CallsignPrefix'):
+              model_name_cur = (model_match_rule.get('ModelName')).split("//")
+              if model_match_rule.get('TypeCode') == typecode:
+                model_name_cur = (model_match_rule.get('ModelName')).split("//")
+                livery_found = True
+                break   
+        
+        if livery_found == False and USE_FSLTL_LIVERY == True: 
+          tree = ET.parse('FSLTL_Rules.vmr')
+          root_Fsltl = tree.getroot()
+          # Iterate over all ModelMatchRule elements
+          for model_match_rule in root_Fsltl.findall('ModelMatchRule'):
+            # Check if the TypeCode matches
+            if icao == model_match_rule.get('CallsignPrefix'):
+                model_name_cur = (model_match_rule.get('ModelName')).split("//")
+                if model_match_rule.get('TypeCode') == typecode:
+                  model_name_cur = (model_match_rule.get('ModelName')).split("//")
+                  livery_found = True
+                  break 
+      
         if livery_found == True:
           break          
       model_name = random.choice(model_name_cur)
@@ -332,12 +338,16 @@ class Common:
         ON_Ground = 0.0
         Heading = 0.0
         Gear = 0.0
+        Landed = 0
         if Des == airport:
-          SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Heading,Gear,Req_Id,Obj_Id] 
+          SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Landed,Heading,Gear,Req_Id,Obj_Id] 
     except:
       print("Unable to copy Arrival Cruise to Arrival")
 
   def Run():
+    global SRC_AIRPORT_IACO,DES_AIRPORT_IACO,SRC_ACTIVE_RUNWAY,DES_ACTIVE_RUNWAY,SRC_GROUND_RANGE,DES_GROUND_RANGE
+    global GROUND_INJECTION_TIME_DEP,GROUND_INJECTION_TIME_ARR,MAX_DEPARTURE_AI_FLIGHTS,MAX_ARRIVAL_AI_FLIGHTS
+    global CRUISE_ALTITUDE,SRC_GROUND_RANGE,CRUISE_INJECTION_TIME,MAX_CRUISE_AI_FLIGHTS
 
     Common.Read_Config_file()
 
@@ -385,7 +395,7 @@ class Common:
         Common.Get_User_Aircraft()
                
         # if User aircraft within 50KM of Departure airport
-        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SRC_GROUND_RANGE:
+        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SRC_GROUND_RANGE and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]  < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"]:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
           Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)  
           Common.State_Machine = 1  
@@ -422,7 +432,8 @@ class Common:
               Common.Skip_injection += 1 
 
         # if User aircraft within 100KM of Arrival airport  
-        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < DES_GROUND_RANGE:
+        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < DES_GROUND_RANGE and \
+          SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"]  < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
           Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)
           Common.State_Machine = 3
@@ -522,7 +533,8 @@ class Cruise:
   Cruise_Arr_src_Index = 0
 
   def Create_Cruise_Traffic_database_Arrival_des(airport,max_cruise):
-    driver = webdriver.Chrome(options=Common.chrome_options)
+    
+    driver = uc.Chrome(options=Common.chrome_options)
     driver.set_window_size(945, 1012)
     print("------------Get Cruise Arrival FR24 Traffic---------------------")
 
@@ -578,7 +590,7 @@ class Cruise:
 
 
   def Create_Cruise_Traffic_database_Arrival_src(airport,max_cruise):
-    driver = webdriver.Chrome(options=Common.chrome_options)
+    driver = uc.Chrome(options=Common.chrome_options)
     driver.set_window_size(945, 1012)
     print("------------Get Cruise Arrival FR24 Traffic---------------------")
 
@@ -936,7 +948,7 @@ class Arrival:
       
   def Get_Arrival(airport,max_Arrival):
 
-    driver = webdriver.Chrome(options=Common.chrome_options)
+    driver = uc.Chrome(options=Common.chrome_options)
     driver.set_window_size(945, 1012)
     print("------------Get Arrival FR24 Traffic---------------------")
 
@@ -958,7 +970,7 @@ class Arrival:
     next_day_datetime = current_datetime + timedelta(days=1)
 
     flight_elements = driver.find_elements(By.XPATH, "//td")
-  
+ 
     prev_lin = ""
     Check_New_Day = False
     prev_time = current_datetime.strftime('%H')
@@ -1252,7 +1264,8 @@ class Arrival:
         ON_Ground = 0.0
         Heading = 0.0
         Gear = 0.0
-        SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Heading,Gear,Req_Id,Obj_Id]
+        Landed = 0
+        SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Landed,Heading,Gear,Req_Id,Obj_Id]
         try:
           inject_index = Arrival.Create_flight_plan_arr(Src,Des,RW)
           Livery_name = Common.Get_flight_match(Call,Type)
@@ -1300,17 +1313,20 @@ class Arrival:
       Airspeed = SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Airspeed"].values[0]
       Landing_light = SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Landing_light"].values[0]
       ON_Ground = SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "ON_Ground"].values[0]
+      Landed = SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Landed"].values[0]
       
       try:
-        if float(Airspeed) < 200.0 and int(Landing_light) == 1 and int(ON_Ground) == 1:
+        if float(Airspeed) < 200.0 and int(Landing_light) == 1 and int(ON_Ground) == 1 and Landed == 0:
           if float(Airspeed) < 100:
-            final_speed = float(Airspeed) - 30
+            final_speed = float(Airspeed) - 20
           else:
-            final_speed = float(Airspeed) - 50
+            final_speed = float(Airspeed) - 30
           if final_speed < 50:
             final_speed = 50
+            SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Landed"] = 1
           if flight['Obj_Id'] > 1:
             sm.AIAircraftAirspeed(flight["Obj_Id"],final_speed)
+
       except:
         print("Unable to set speed of aircraft on runway")
 
@@ -1366,7 +1382,7 @@ class Departure:
   def Get_Departure(airport,max_departure):
    
     # Set up the WebDriver (this assumes you have ChromeDriver installed)
-    driver = webdriver.Chrome(options=Common.chrome_options)
+    driver = uc.Chrome(options=Common.chrome_options)
     driver.set_window_size(945, 1012)
     
     print("------------Get Departure FR24 Traffic---------------------")
