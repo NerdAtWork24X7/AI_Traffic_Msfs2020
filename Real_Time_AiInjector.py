@@ -320,11 +320,10 @@ class Common:
         Estimate_time = 0.0
         Call = flight["Call"]
         Type = flight["Type"]
-        Src  = flight["Src_ICAO"]
-        Des = flight["Des_ICAO"]
-        Reg = "INV"
-        Cur_Lat = flight["Lat"]
-        Cur_Log = flight["Lon"]
+        Src  = flight["Src"]
+        Des = flight["Des"]
+        Cur_Lat = flight["Cur_Lat"]
+        Cur_Log = flight["Cur_Log"]
         Prv_Lat = 0.0
         Prv_Log = 0.0
         Par_log = 0.0
@@ -1307,16 +1306,16 @@ class Arrival:
       sm.AIAircraft_GetPosition(flight["Req_Id"],flight["Obj_Id"])
       Call = flight["Call"]
       if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Gear"].values[0] == 0 or \
-      SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Landing_light"].values[0] == 0:
+      SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Landing_light"].values[0] == 0 or \
+      SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Landed"].values[0] == 1:
         continue
       time.sleep(1)
       Airspeed = SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Airspeed"].values[0]
       Landing_light = SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Landing_light"].values[0]
       ON_Ground = SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "ON_Ground"].values[0]
-      Landed = SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Landed"].values[0]
       
       try:
-        if float(Airspeed) < 200.0 and int(Landing_light) == 1 and int(ON_Ground) == 1 and Landed == 0:
+        if float(Airspeed) < 200.0 and int(Landing_light) == 1 and int(ON_Ground) == 1:
           if float(Airspeed) < 100:
             final_speed = float(Airspeed) - 20
           else:
@@ -1339,7 +1338,7 @@ class Arrival:
         heading2 = int(df.iloc[j]['Heading'])
         # Use a tolerance to compare headings
         if abs(heading1 - heading2) < 45:  # 45 degrees tolerance for heading comparison
-            if df.iloc[i]["ON_Ground"] == 0 and df.iloc[j]["ON_Ground"] == 0:
+            if df.iloc[i]["ON_Ground"] == 0 and df.iloc[j]["ON_Ground"] == 0 and df.iloc[i]["Landed"] == 0 and df.iloc[j]["Landed"] == 0:
                 lat1, lon1 = df.iloc[i][['Cur_Lat', 'Cur_Log']]
                 lat2, lon2 = df.iloc[j][['Cur_Lat', 'Cur_Log']]
                 speed1, speed2 = df.iloc[i]['Airspeed'], df.iloc[j]['Airspeed']
