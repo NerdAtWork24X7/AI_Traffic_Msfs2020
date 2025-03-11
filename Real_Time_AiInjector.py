@@ -1108,7 +1108,7 @@ class Arrival:
             point2 = (way_df.iloc[-1]["laty"], way_df.iloc[-1]["lonx"]) 
             distance = geodesic((float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"])), point2).km         
             if distance < Outer_dis and app_leg["fix_type"] != "V" :
-              if first_way_point == 0 and distance > 25:
+              if first_way_point == 0 and distance > 35:
                 first_way_lat = float(way_df["laty"].iloc[-1])
                 first_way_lon = float(way_df["lonx"].iloc[-1])
                 first_way_point = 1
@@ -1138,8 +1138,8 @@ class Arrival:
       lon2 = float(des_df.iloc[-1]["lonx"])
       # Calculate the bearing (direction) from source to destination
       bearing = bearing = math.atan2(math.sin(lon2 - lon1) * math.cos(lat2), math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(lon2 - lon1))
-      # Move 25 km from the source point towards the destination
-      new_point = geodesic(source_point, destination_point).destination(destination_point,bearing, distance=30)
+      # Move 35 km from the source point towards the destination
+      new_point = geodesic(source_point, destination_point).destination(destination_point,bearing, distance=35)
       src_waypoint_Pos = Common.format_coordinates(new_point.latitude, new_point.longitude,float(crusing_alt))
       src_waypoint_id = "USERWP"
       src_waypoint_reg = "USER"
