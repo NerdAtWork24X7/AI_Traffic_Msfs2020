@@ -1139,23 +1139,27 @@ class Arrival:
       # Calculate the bearing (direction) from source to destination
       bearing = bearing = math.atan2(math.sin(lon2 - lon1) * math.cos(lat2), math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(lon2 - lon1))
       # Move 25 km from the source point towards the destination
-      new_point = geodesic(source_point, destination_point).destination(destination_point,bearing, distance=25)
+      new_point = geodesic(source_point, destination_point).destination(destination_point,bearing, distance=30)
       src_waypoint_Pos = Common.format_coordinates(new_point.latitude, new_point.longitude,float(crusing_alt))
       src_waypoint_id = "USERWP"
       src_waypoint_reg = "USER"
       first_way_point = 2
-          
-    with Common.engine_approach_db.connect() as conn:
-      qry_str = '''SELECT "_rowid_", * FROM "main"."approach" WHERE "airport_ident" LIKE '%'''+des+'''%' ESCAPE '\\'  AND "runway_name" LIKE '%'''+RW+'''%' AND "heading" IS NOT NULL'''
-      Way_RW_Heading = pd.read_sql(sql=qry_str, con=conn.connection)
-    
-    with Common.engine_waypoint_db.connect() as conn:
-      qry_str = '''SELECT "_rowid_", * FROM "main"."waypoint" WHERE "ident" LIKE '%'''+Way_RW_Heading.iloc[-1]["fix_ident"] +'''%' ESCAPE '\\' AND "region" LIKE '%'''+Way_RW_Heading.iloc[-1]["fix_region"]+'''%' '''
-      RW_Head_way_df = pd.read_sql(sql=qry_str, con=conn.connection)
 
-    RW_Head_way_Pos = Common.format_coordinates(float(RW_Head_way_df.iloc[-1]["laty"]),float(RW_Head_way_df.iloc[-1]["lonx"]),Way_RW_Heading.iloc[-1]["altitude"])
-    RW_Head_way_id = RW_Head_way_df.iloc[-1]["ident"]
-    RW_Head_way_reg = RW_Head_way_df.iloc[-1]["region"]
+    RW_Head_way_Pos = "None"
+    try:    
+      with Common.engine_approach_db.connect() as conn:
+        qry_str = '''SELECT "_rowid_", * FROM "main"."approach" WHERE "airport_ident" LIKE '%'''+des+'''%' ESCAPE '\\'  AND "runway_name" LIKE '%'''+RW+'''%' AND "heading" IS NOT NULL'''
+        Way_RW_Heading = pd.read_sql(sql=qry_str, con=conn.connection)
+      
+      with Common.engine_waypoint_db.connect() as conn:
+        qry_str = '''SELECT "_rowid_", * FROM "main"."waypoint" WHERE "ident" LIKE '%'''+Way_RW_Heading.iloc[-1]["fix_ident"] +'''%' ESCAPE '\\' AND "region" LIKE '%'''+Way_RW_Heading.iloc[-1]["fix_region"]+'''%' '''
+        RW_Head_way_df = pd.read_sql(sql=qry_str, con=conn.connection)
+  
+      RW_Head_way_Pos = Common.format_coordinates(float(RW_Head_way_df.iloc[-1]["laty"]),float(RW_Head_way_df.iloc[-1]["lonx"]),Way_RW_Heading.iloc[-1]["altitude"])
+      RW_Head_way_id = RW_Head_way_df.iloc[-1]["ident"]
+      RW_Head_way_reg = RW_Head_way_df.iloc[-1]["region"]
+    except:
+      print("No waypoint on Runway Heading " + RW)
 
     fln_plan = """<?xml version="1.0" encoding="UTF-8"?> \
    
@@ -1192,20 +1196,23 @@ class Arrival:
             <ICAOIdent>"""+src_waypoint_id+"""</ICAOIdent>
             </ICAO>
         </ATCWaypoint>\n"""
-    fln_plan += approach_string + """        <ATCWaypoint id=\""""+RW_Head_way_id+"""\">
+    if RW_Head_way_Pos != "None":  
+      fln_plan += approach_string + """        <ATCWaypoint id=\""""+RW_Head_way_id+"""\">
             <ATCWaypointType>Intersection</ATCWaypointType>
             <WorldPosition>"""+RW_Head_way_Pos+"""</WorldPosition>
             <ICAO>
                 <ICAORegion>"""+RW_Head_way_reg+"""</ICAORegion>
                 <ICAOIdent>"""+RW_Head_way_id + """</ICAOIdent>
             </ICAO>
-        </ATCWaypoint>
-        <ATCWaypoint id=\""""+ des +"""\">
+        </ATCWaypoint>"""
+      
+    fln_plan +="""      <ATCWaypoint id=\""""+ des +"""\">
             <ATCWaypointType>Airport</ATCWaypointType>
-            <WorldPosition>"""+des_Pos+"""</WorldPosition>
-            <RunwayNumberFP>"""+RW_num+"""</RunwayNumberFP>\n"""
-    if len(RW_des) > 0:
-      fln_plan +="""            <RunwayDesignatorFP>"""+RW_designa+"""</RunwayDesignatorFP>\n"""
+            <WorldPosition>"""+des_Pos+"""</WorldPosition>\n"""
+    if RW_Head_way_Pos != "None": 
+      fln_plan +="""  <RunwayNumberFP>"""+RW_num+"""</RunwayNumberFP>\n"""
+      if len(RW_des) > 0:
+        fln_plan +="""            <RunwayDesignatorFP>"""+RW_designa+"""</RunwayDesignatorFP>\n"""
     fln_plan +="""            <ICAO>
                 <ICAOIdent>"""+ des +"""</ICAOIdent>        
           </ICAO>
@@ -1698,7 +1705,7 @@ class Departure:
 sm = SimConnect(library_path=".\Sim_Connect_Custom\SimConnect.dll")
 Common.Run()
 
-#Arrival.Create_flight_plan_arr("VARP","EDDF","07R")
+#Arrival.Create_flight_plan_arr("VARP","LEMD","36R")
 #Arrival.Create_flight_plan_arr("LEMD","SAEZ","11")
 #Departure.Create_flight_plan_Dep("NZAA","SCIP","05R")
 #Cruise.Create_flt_Plan("NZAA","SCIP",float(-35.173808),float(-161.3815),float(400),float(5000))
