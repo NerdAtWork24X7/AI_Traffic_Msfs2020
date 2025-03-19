@@ -394,7 +394,7 @@ class Common:
         Common.Get_User_Aircraft()
                
         # if User aircraft within 50KM of Departure airport
-        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SRC_GROUND_RANGE and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]  < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"]:
+        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]  < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"]:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
           Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)  
           Common.State_Machine = 1  
@@ -431,7 +431,7 @@ class Common:
               Common.Skip_injection += 1 
 
         # if User aircraft within 100KM of Arrival airport  
-        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < DES_GROUND_RANGE and \
+        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < DES_GROUND_RANGE and \
           SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"]  < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
           Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)
