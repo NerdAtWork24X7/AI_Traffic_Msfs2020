@@ -343,6 +343,35 @@ class Common:
     except:
       print("Unable to copy Arrival Cruise to Arrival")
 
+  
+  def Check_Arrival_Departure(airport):
+    try:
+      for index, flight in SimConnect.MSFS_AI_Departure_Traffic.iterrows():
+        Call = flight["Call"]
+        Src  = flight["Src"]
+        Des = flight["Des"]
+        Obj_Id = flight["Obj_Id"]
+        if Src != airport:
+          if Obj_Id != 0:
+            sm.AIRemoveObject(flight["Obj_Id"],flight["Req_Id"])
+          SimConnect.MSFS_AI_Departure_Traffic = SimConnect.MSFS_AI_Departure_Traffic[SimConnect.MSFS_AI_Departure_Traffic['Call'] != Call]
+    except:
+      print("Unable to remove old Departure aircraft")
+    
+    try:
+      for index, flight in SimConnect.MSFS_AI_Arrival_Traffic.iterrows():
+        Call = flight["Call"]
+        Src  = flight["Src"]
+        Des = flight["Des"]
+        Obj_Id = flight["Obj_Id"]
+        if Des != airport:
+          if Obj_Id != 0:
+            sm.AIRemoveObject(flight["Obj_Id"],flight["Req_Id"])
+          SimConnect.MSFS_AI_Departure_Traffic = SimConnect.MSFS_AI_Departure_Traffic[SimConnect.MSFS_AI_Departure_Traffic['Call'] != Call]
+    except:
+      print("Unable to remove old Arrival aircraft")
+
+  
   def Run():
     global SRC_AIRPORT_IACO,DES_AIRPORT_IACO,SRC_ACTIVE_RUNWAY,DES_ACTIVE_RUNWAY,SRC_GROUND_RANGE,DES_GROUND_RANGE
     global GROUND_INJECTION_TIME_DEP,GROUND_INJECTION_TIME_ARR,MAX_DEPARTURE_AI_FLIGHTS,MAX_ARRIVAL_AI_FLIGHTS
@@ -394,7 +423,7 @@ class Common:
         Common.Get_User_Aircraft()
                
         # if User aircraft within 50KM of Departure airport
-        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] < SRC_GROUND_RANGE and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]  < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"]:
+        if (SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]  < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"]) and Common.Shift_Cruise_Des == False:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
           Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)  
           Common.State_Machine = 1  
@@ -431,13 +460,13 @@ class Common:
               Common.Skip_injection += 1 
 
         # if User aircraft within 100KM of Arrival airport  
-        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"] > SRC_GROUND_RANGE  and SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < DES_GROUND_RANGE and \
+        if SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"] < DES_GROUND_RANGE and \
           SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Des"]  < SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]:
           Fr24_Dep_len = len(Departure.FR24_Departure_Traffic)
           Fr24_Arr_len = len(Arrival.FR24_Arrival_Traffic)
           Common.State_Machine = 3
           
-          if ((Fr24_Dep_len == 0 or Fr24_Arr_len == 0) or (Common.Shift_Cruise_Des == False and Common.Shift_Src_Cruise == True)) and Common.Retry_DES < 2:
+          if ((Fr24_Dep_len == 0 or Fr24_Arr_len == 0) or (Common.Shift_Cruise_Des == False)) and Common.Retry_DES < 2:
             print("--------------At Destination Airport-------------------")   
             #Clear Arrival and Departure FR24 dataframe
             Common.Shift_Cruise_Des = True 
@@ -445,6 +474,7 @@ class Common:
             Arrival.Arrival_Index = 0
             Departure.FR24_Departure_Traffic = pd.DataFrame(columns=['Estimate_time', 'Scheduled_time', "Call","des", "Type","Reg",'Ocio',"Src_ICAO","Des_ICAO","Local_depart_time"])
             Departure.Departure_Index = 0
+            Common.Check_Arrival_Departure(DES_AIRPORT_IACO)
            
             Arrival.Get_Arrival(DES_AIRPORT_IACO,100)
             Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
