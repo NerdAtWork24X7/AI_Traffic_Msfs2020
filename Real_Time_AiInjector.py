@@ -54,6 +54,7 @@ SPWAN_ALTITUDE = 20000
 GROUND_INJECTION_TIME_ARR = 2
 GROUND_INJECTION_TIME_DEP = 2
 CRUISE_INJECTION_TIME = 5
+DEPART_REALTIME = True
 
 MIN_SEPARATION = 10 #KM
 
@@ -94,6 +95,9 @@ class Common:
   Shift_Src_Cruise = False
   Shift_Cruise_Des = False
 
+  prev_model  = ""
+  prev_icao = ""
+
   Skip_injection = 1 # For Flight spacing
 
   State_Machine = 0
@@ -101,7 +105,7 @@ class Common:
   def Read_Config_file():
     global ADBS_key,ADBS_host,simbrief_username
     global USE_FSTRAFFIC_LIVERY,USE_AIG_LIVERY,MAX_ARRIVAL_AI_FLIGHTS,MAX_DEPARTURE_AI_FLIGHTS,MAX_CRUISE_AI_FLIGHTS
-    global MAX_PARKED_AI_FLIGHTS,CRUISE_ALTITUDE,SRC_GROUND_RANGE,DES_GROUND_RANGE,SPWAN_DIST,USE_FSLTL_LIVERY
+    global MAX_PARKED_AI_FLIGHTS,CRUISE_ALTITUDE,SRC_GROUND_RANGE,DES_GROUND_RANGE,SPWAN_DIST,USE_FSLTL_LIVERY,DEPART_REALTIME
     global SPWAN_ALTITUDE,GROUND_INJECTION_TIME_ARR,GROUND_INJECTION_TIME_DEP,CRUISE_INJECTION_TIME,MIN_SEPARATION
     
     try:
@@ -119,6 +123,7 @@ class Common:
         USE_FSTRAFFIC_LIVERY = bool(data["USE_FSTRAFFIC_LIVERY"])
         USE_AIG_LIVERY = bool(data["USE_AIG_LIVERY"])
         USE_FSLTL_LIVERY = bool(data["USE_FSLTL_LIVERY"])
+        DEPART_REALTIME = bool(data["DEPART_REALTIME"])
         
         MAX_ARRIVAL_AI_FLIGHTS = int(data["MAX_ARRIVAL_AI_FLIGHTS"])
         MAX_DEPARTURE_AI_FLIGHTS = int(data["MAX_DEPARTURE_AI_FLIGHTS"])
@@ -232,9 +237,8 @@ class Common:
 
   def Get_flight_match(callsign,typecode):
     global USE_FSLTL_LIVERY,USE_AIG_LIVERY,USE_FSTRAFFIC_LIVERY
-    #Default Livaery
-    model_name = "FSLTL_FSPXAI_B788_Airindia"
     
+
     livery_found = False
     try: 
       IATA_call = callsign[:2]
@@ -244,6 +248,7 @@ class Common:
 
       for index, icao_iata in src_df.iterrows():
         icao = icao_iata["icao"]
+        new_callsign = callsign.replace(IATA_call,icao)
         if livery_found == False and USE_AIG_LIVERY == True:  
           tree = ET.parse('AIG.vmr')
           root_AIG = tree.getroot()
@@ -282,15 +287,27 @@ class Common:
                   break 
       
         if livery_found == True:
+          Common.prev_model  = random.choice(model_name_cur)
+          Common.prev_icao = icao
           break          
+      
       model_name = random.choice(model_name_cur)
       #print(model_name)
   
     except:
       print("Error in flight matching")
+
+    if livery_found == False:
+      if Common.prev_model == "":
+        #Default Livaery
+        model_name = "FSLTL_FSPXAI_B788_Airindia"
+        new_callsign = "AIC" + str(random.randint(100,9999))
+      else:
+        model_name = Common.prev_model
+        new_callsign = Common.prev_icao + str(random.randint(100,9999))
+
   
-  
-    return model_name
+    return model_name , new_callsign
 
       
   def Get_User_Aircraft():
@@ -432,21 +449,18 @@ class Common:
             print("--------------At Departure Airport-------------------") 
             Arrival.Get_Arrival(SRC_AIRPORT_IACO,100)
             Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
-            Arrival.Arrival_Index += 1
             
             Departure.Get_Departure(SRC_AIRPORT_IACO,100)
             Departure.Inject_Parked_Traffic()
             Departure.Assign_Flt_plan(SRC_ACTIVE_RUNWAY)
-            Departure.Departure_Index += 1 
             
-
             Common.Retry_SRC += 1             #Retry only once if Flight Radar data is available
             
           else:
             if (Departure.Departure_Index < 5 or min % GROUND_INJECTION_TIME_DEP == 0) and Departure.Departure_Index < MAX_DEPARTURE_AI_FLIGHTS:   
               if Departure.Departure_Index < Fr24_Dep_len:
                   Departure.Assign_Flt_plan(SRC_ACTIVE_RUNWAY)
-                  Departure.Departure_Index += 1
+                  
               else:
                 print("Departure injection Completed at Departure airport")
 
@@ -454,7 +468,6 @@ class Common:
               if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic) :
                 if Common.Skip_injection % 5 != 0:
                   Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
-                  Arrival.Arrival_Index += 1
               else:
                 print("Arrival injection Completed at Departure airport")
               Common.Skip_injection += 1 
@@ -478,20 +491,17 @@ class Common:
            
             Arrival.Get_Arrival(DES_AIRPORT_IACO,100)
             Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
-            Arrival.Arrival_Index += 1
-
 
             Departure.Get_Departure(DES_AIRPORT_IACO,100)
             Departure.Inject_Parked_Traffic()
             Departure.Assign_Flt_plan(DES_ACTIVE_RUNWAY)
-            Departure.Departure_Index += 1          
+                   
             Common.Retry_DES += 1             #Retry only once if Flight Radar data is available
           
           else:
             if (Departure.Departure_Index < 5 or min % GROUND_INJECTION_TIME_DEP == 0) and Departure.Departure_Index < MAX_DEPARTURE_AI_FLIGHTS:
               if Departure.Departure_Index < Fr24_Dep_len:
                   Departure.Assign_Flt_plan(DES_ACTIVE_RUNWAY)
-                  Departure.Departure_Index += 1
               else:
                 print("Departure injection Completed at destination airport")
 
@@ -499,7 +509,6 @@ class Common:
               if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic) :
                 if Common.Skip_injection % 5 != 0:
                   Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
-                  Arrival.Arrival_Index += 1
               else:
                 print("Arrival injection Completed at destination airport")  
               Common.Skip_injection += 1
@@ -741,10 +750,10 @@ class Cruise:
       Obj_Id = 0
       SimConnect.MSFS_Cruise_Traffic.loc[last_element] = [Call,Type,Src,Des,Cur_Lat,Cur_Log,Altitude,Heading,Speed,Flt_plan,Req_Id,Obj_Id]
       try:
-        Livery_name = Common.Get_flight_match(Call,Type)
+        Livery_name , callsign = Common.Get_flight_match(Call,Type)
         flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat),float(Cur_Log),float(Speed),float(Altitude))
-        print("Crusing----" + Call + " " + Type + " " + str(Livery_name))
-        result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
+        print("Crusing----" + callsign + " " + Type + " " + str(Livery_name))
+        result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
         Common.Global_req_id+=1
         time.sleep(2)
         if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
@@ -774,11 +783,11 @@ class Cruise:
           Flt_plan = 0
           Req_Id = Common.Global_req_id
           SimConnect.MSFS_Cruise_Traffic.loc[last_element] = [Call,Type,Src,Des,Cur_Lat,Cur_Log,Altitude,Heading,Speed,Flt_plan,Req_Id,Obj_Id]
-          Livery_name = Common.Get_flight_match(Call,Type)
+          Livery_name , callsign = Common.Get_flight_match(Call,Type)
           Altitude_offset = random.choice([-1000,-2000,-3000,-4000,-5000,1000,2000,3000])
           flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat), float(Cur_Log) ,Speed,float(int(Altitude) + int(Altitude_offset)))
-          print("Crusing----" + Call + " " + Type + " " + str(Livery_name))
-          result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
+          print("Crusing----" + callsign + " " + Type + " " + str(Livery_name))
+          result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
           Common.Global_req_id+=1
           time.sleep(2)
           if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
@@ -808,11 +817,11 @@ class Cruise:
           Flt_plan = 0
           Req_Id = Common.Global_req_id
           SimConnect.MSFS_Cruise_Traffic.loc[last_element] = [Call,Type,Src,Des,Cur_Lat,Cur_Log,Altitude,Heading,Speed,Flt_plan,Req_Id,Obj_Id]
-          Livery_name = Common.Get_flight_match(Call,Type)
+          Livery_name, callsign = Common.Get_flight_match(Call,Type)
           Altitude_offset = random.choice([-1000,-2000,-3000,-4000,-5000,1000,2000,3000])
           flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat), float(Cur_Log) ,Speed,float(int(Altitude) + int(Altitude_offset)))
-          print("Crusing----" + Call + " " + Type + " " + str(Livery_name))
-          result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
+          print("Crusing----" + callsign + " " + Type + " " + str(Livery_name))
+          result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
           Common.Global_req_id+=1
           time.sleep(2)
           if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
@@ -1304,9 +1313,9 @@ class Arrival:
         SimConnect.MSFS_AI_Arrival_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Airspeed,Landing_light,ON_Ground,Landed,Heading,Gear,Req_Id,Obj_Id]
         try:
           inject_index = Arrival.Create_flight_plan_arr(Src,Des,RW)
-          Livery_name = Common.Get_flight_match(Call,Type)
-          print("Arrival----" + Call + " " + Type + " " + str(Livery_name))
-          result = sm.AICreateEnrouteATCAircraft(Livery_name,Call,int(Call[2:]),current_dir + "/fln_plan_arr",float(inject_index),False,Req_Id)
+          Livery_name , callsign = Common.Get_flight_match(Call,Type)
+          print("Arrival----" + callsign + " " + Type + " " + str(Livery_name))
+          result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(Call[2:]),current_dir + "/fln_plan_arr",float(inject_index),False,Req_Id)
           Common.Global_req_id+=1
           time.sleep(2)
           if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
@@ -1315,6 +1324,7 @@ class Arrival:
           print("Cannot create Arrival flight plan")
         #print(flt_plan)
         #print(SimConnect.MSFS_AI_Arrival_Traffic)
+      Arrival.Arrival_Index += 1
 
   def Check_Traffic_Arrival():
 
@@ -1456,7 +1466,7 @@ class Departure:
       flight_info = flight.text 
       if  prev_lin != flight_info:
         flight_info_list = flight_info.split("\n")
-        if flight_info_list[0].split(" ")[0] == "Estimated" or flight_info_list[0].split(" ")[0] == "Delayed":
+        if flight_info_list[0].split(" ")[0] == "Estimated" or flight_info_list[0].split(" ")[0] == "Delayed" or flight_info_list[0].split(" ")[0] == "Departed":
           if flight_info_list[2] in Departure.FR24_Departure_Traffic['Call'].values:
             continue
           last_element = len(Departure.FR24_Departure_Traffic)
@@ -1663,11 +1673,12 @@ class Departure:
         altitude = 0
         Req_Id = Common.Global_req_id
         Obj_Id = 0
-        SimConnect.MSFS_AI_Departure_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Req_Id,Obj_Id]  
+        Local_depart_time = row["Local_depart_time"]
+        SimConnect.MSFS_AI_Departure_Traffic.loc[last_element] = [Estimate_time, Call,Type,Src, Des,Par_lat,Par_log,Cur_Lat,Cur_Log,altitude,Prv_Lat,Prv_Log,Stuck,Req_Id,Obj_Id,Local_depart_time]  
         try:
-          Livery_name = Common.Get_flight_match(Call,Type)
-          sm.AICreateParkedATCAircraft(Livery_name,Call,Src,Req_Id)
-          print("Parked----" + Call + " " + Type + " " + str(Livery_name))
+          Livery_name , callsign = Common.Get_flight_match(Call,Type)
+          sm.AICreateParkedATCAircraft(Livery_name,callsign,Src,Req_Id)
+          print("Parked----" + callsign + " " + Type + " " + str(Livery_name))
           Common.Global_req_id+=1
           time.sleep(1)
         except:
@@ -1690,21 +1701,32 @@ class Departure:
     #print(SimConnect.MSFS_AI_Departure_Traffic)     
 
   def Assign_Flt_plan(RW):
-    global current_dir
+    global current_dir,DEPART_REALTIME
+    Assign_flt = True
     if Departure.Departure_Index < len(SimConnect.MSFS_AI_Departure_Traffic) and len(SimConnect.MSFS_AI_Departure_Traffic) > 0:
-      try:
-        Src = SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Src"]
-        Des =  SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Des"]
-        Call = SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Call"]
-        Type = SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Type"]
-        Obj_Id =  SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Obj_Id"]
-        Req_Id = Common.Global_req_id
-        flt_plan = Departure.Create_flight_plan_Dep(Src,Des,RW)
-        print("Depart----" +Call + " " + Type)
-        sm.AISetAircraftFlightPlan(Obj_Id, current_dir + "/fln_plan_dep",Req_Id)
-        Common.Global_req_id+=1
-      except:
-        print("Cannot create Departure flight plan")
+      if DEPART_REALTIME == True:
+        current_local_time = datetime.now().astimezone()
+        depart_time = datetime.fromisoformat(str(SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Local_depart_time"]))
+        if current_local_time > depart_time:
+          Assign_flt = True
+        else:
+          Assign_flt = False       
+
+      if Assign_flt == True:
+        try:
+          Src = SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Src"]
+          Des =  SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Des"]
+          Call = SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Call"]
+          Type = SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Type"]
+          Obj_Id =  SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Obj_Id"]
+          Req_Id = Common.Global_req_id
+          flt_plan = Departure.Create_flight_plan_Dep(Src,Des,RW)
+          print("Depart----" +Call + " " + Type)
+          sm.AISetAircraftFlightPlan(Obj_Id, current_dir + "/fln_plan_dep",Req_Id)
+          Common.Global_req_id+=1
+        except:
+          print("Cannot create Departure flight plan")
+        Departure.Departure_Index += 1 
 
   def Check_Traffic_Departure():
 
@@ -1740,3 +1762,5 @@ Common.Run()
 #Departure.Create_flight_plan_Dep("NZAA","SCIP","05R")
 #Cruise.Create_flt_Plan("NZAA","SCIP",float(-35.173808),float(-161.3815),float(400),float(5000))
 #Common.Get_flight_match("H2322","32N")
+
+
