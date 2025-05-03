@@ -23,7 +23,8 @@ import json
 import requests
 from haversine import haversine, Unit
 import math
-
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 warnings.filterwarnings('ignore')
 
@@ -35,6 +36,9 @@ SRC_AIRPORT_IACO = ""
 DES_AIRPORT_IACO = ""
 SRC_ACTIVE_RUNWAY = ""
 DES_ACTIVE_RUNWAY = ""
+
+ACTIVE_RUNWAY_TAKEOFF = ""
+ACTIVE_RUNWAY_LANDING = ""
 
 USE_FSTRAFFIC_LIVERY = True
 USE_AIG_LIVERY = True
@@ -79,7 +83,7 @@ class Common:
 
    
   engine_airport_db = create_engine('sqlite:///./Database/Airport.sqlite')
-  engine_airline_db = create_engine('sqlite:///./Database/airline_icao.sqlite')
+  engine_airline_db = create_engine('sqlite:///./Database/callsign_data.sqlite')
   engine_approach_db = create_engine('sqlite:///./Database/Approach.sqlite')
   engine_waypoint_db = create_engine('sqlite:///./Database/Waypoints.sqlite')
 
@@ -243,7 +247,7 @@ class Common:
     try: 
       IATA_call = callsign[:2]
       with Common.engine_airline_db.connect() as conn:
-        qry_str = '''SELECT "_rowid_",* FROM "main"."mytable" WHERE "iata" LIKE '%'''+IATA_call+'''%' '''
+        qry_str = '''SELECT "_rowid_",* FROM "main"."callsigns" WHERE "iata" LIKE '%'''+IATA_call+'''%' '''
         src_df = pd.read_sql(sql=qry_str, con=conn.connection)
 
       for index, icao_iata in src_df.iterrows():
@@ -985,6 +989,10 @@ class Arrival:
     #print(Arrival.ADBS_Arrival_Traffic)
       
   def Get_Arrival(airport,max_Arrival):
+    global ACTIVE_RUNWAY_TAKEOFF,ACTIVE_RUNWAY_LAND
+
+    ACTIVE_RUNWAY_LAND = ""
+    ACTIVE_RUNWAY_TAKEOFF = ""
 
     driver = uc.Chrome(options=Common.chrome_options)
     driver.set_window_size(945, 1012)
@@ -1000,6 +1008,9 @@ class Arrival:
       driver.get(url)
       #Arrival.Get_Arrival_ADB_S(des_air["laty"].iloc[-1],des_air["lonx"].iloc[-1],25)
       time.sleep(10)
+ 
+      driver.execute_script("window.open('https://www.airnavradar.com/data/airports/" + airport +"', '_blank');")
+      time.sleep(5)
     except:
       print("Check internet connection = " + url)
       return
@@ -1014,9 +1025,8 @@ class Arrival:
     prev_time = current_datetime.strftime('%H')
     for flight in flight_elements:
       flight_info = flight.text 
-      if  prev_lin != flight_info:
-        flight_info_list = flight_info.split("\n") 
-                
+      if prev_lin != flight_info:
+        flight_info_list = flight_info.split("\n")
         if flight_info_list[0].split(" ")[0] == "Estimated" or flight_info_list[0].split(" ")[0] == "Delayed":
           if flight_info_list[2] in Arrival.FR24_Arrival_Traffic['Call'].values:
             continue
@@ -1069,11 +1079,44 @@ class Arrival:
     Arrival.FR24_Arrival_Traffic = Arrival.FR24_Arrival_Traffic.sort_values(by='Local_arrival_time',ascending=True).reset_index(drop=True)
     print(Arrival.FR24_Arrival_Traffic)
 
+    # Get active Runway
+    # Switch to the new tab (usually at index 1)
+    driver.switch_to.window(driver.window_handles[1])
+    
+    time.sleep(2)
+    #WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[6]/div[2]/div[2]/div[2]/div[2]/button[1]"))).click()
+    try:
+      consent_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".fc-cta-consent")))
+      consent_button.click()
+    except:
+        print("Consent button not found or already accepted.")
+    
+    
+    time.sleep(2)
+    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH,"//li[contains(@class, 'ListItemClickable')]//span[text()='Airport Info']/ancestor::li"))).click()
+    found_data = False
+    try:
+      Landing_RW = driver.find_element(By.XPATH, f"//div[@id='title' and contains(text(), 'in Use for Landing')]/following-sibling::div[@id='value']").text
+      Takeoff_RW = driver.find_element(By.XPATH, f"//div[@id='title' and contains(text(), 'in Use for Takeoff')]/following-sibling::div[@id='value']").text
+   
+      ACTIVE_RUNWAY_LAND = Landing_RW.split(" ")[0]
+      ACTIVE_RUNWAY_TAKEOFF = Takeoff_RW.split(" ")[0]
+  
+      print("ACTIVE_RUNWAY_LAND: " + ACTIVE_RUNWAY_LAND)
+      print("ACTIVE_RUNWAY_TAKEOFF: " + ACTIVE_RUNWAY_TAKEOFF)
+    
+    except:
+      print("Runway data not found")
+
+
+
     driver.quit()
     #time.sleep(5)
 
   def Create_flight_plan_arr(src,des,RW):
-  
+
+    global ACTIVE_RUNWAY_LAND
+    
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+src+"""%'"""
     with Common.engine_airport_db.connect() as conn:
       src_df = pd.read_sql(sql=qry_str, con=conn.connection) 
@@ -1092,6 +1135,8 @@ class Arrival:
     #else :
     crusing_alt = str(7000)
     
+    if ACTIVE_RUNWAY_LAND != "":
+      RW = ACTIVE_RUNWAY_LAND
 
     #fill lat and log
     RW_num =  str(int((re.findall(r'\d+', RW))[0]))
@@ -1522,6 +1567,7 @@ class Departure:
     #time.sleep(5)
 
   def Create_flight_plan_Dep(src,des,RW):
+    global ACTIVE_RUNWAY_TAKEOFF
   
     crusing_alt = 30000
     qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+src+"""%'"""
@@ -1542,6 +1588,9 @@ class Departure:
       qry_str = '''SELECT "_rowid_", * FROM "main"."approach" WHERE "airport_ident" LIKE '%'''+src+'''%' ESCAPE '\\' AND "type" LIKE '%GPS%' ESCAPE '\\' AND "suffix" LIKE '%D%' ESCAPE '\\' AND "runway_name" LIKE '%'''+RW+'''%' ESCAPE '\\'LIMIT 0, 49999;'''
       SID_df = pd.read_sql(sql=qry_str, con=conn.connection)
 
+  if ACTIVE_RUNWAY_TAKEOFF != "":
+    RW = ACTIVE_RUNWAY_TAKEOFF
+    
     RW_num =  str(int((re.findall(r'\d+', RW))[0]))
     RW_des = re.findall(r'[A-Za-z]', RW)
     
@@ -1764,3 +1813,4 @@ Common.Run()
 #Common.Get_flight_match("H2322","32N")
 
 
+#Arrival.Get_Arrival("VHHH",100)
