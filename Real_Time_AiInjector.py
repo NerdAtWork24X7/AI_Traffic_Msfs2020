@@ -492,26 +492,28 @@ class Common:
             Departure.FR24_Departure_Traffic = pd.DataFrame(columns=['Estimate_time', 'Scheduled_time', "Call","des", "Type","Reg",'Ocio',"Src_ICAO","Des_ICAO","Local_depart_time"])
             Departure.Departure_Index = 0
             Common.Check_Arrival_Departure(DES_AIRPORT_IACO)
-           
-            Arrival.Get_Arrival(DES_AIRPORT_IACO,100)
-            Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
-            
-            Departure.Get_Departure(DES_AIRPORT_IACO,100)
-            Departure.Inject_Parked_Traffic()
-            Departure.Assign_Flt_plan(DES_ACTIVE_RUNWAY)
-                   
+            Arrival.Get_Arrival(DES_AIRPORT_IACO,100)  
+            Departure.Get_Departure(DES_AIRPORT_IACO,100)                  
             Common.Retry_DES += 1             #Retry only once if Flight Radar data is available
           
           else:
+            if Departure.Departure_Index == 0 and Arrival.Arrival_Index == 0 and (SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]) < 80:
+              Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
+              
+              Departure.Inject_Parked_Traffic()
+              Departure.Assign_Flt_plan(DES_ACTIVE_RUNWAY)
+            
+            
             if (Departure.Departure_Index < 5 or min % GROUND_INJECTION_TIME_DEP == 0) and Departure.Departure_Index < MAX_DEPARTURE_AI_FLIGHTS:
-              if Departure.Departure_Index < Fr24_Dep_len:
-                  Departure.Assign_Flt_plan(DES_ACTIVE_RUNWAY)
+              if Departure.Departure_Index < Fr24_Dep_len :
+                  if (SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]) < 80:
+                    Departure.Assign_Flt_plan(DES_ACTIVE_RUNWAY)
               else:
                 print("Departure injection Completed at destination airport")
 
             if (Arrival.Arrival_Index < 5 or min % GROUND_INJECTION_TIME_ARR == 0) and len(SimConnect.MSFS_AI_Arrival_Traffic) < MAX_ARRIVAL_AI_FLIGHTS:
               if Arrival.Arrival_Index < len(Arrival.FR24_Arrival_Traffic) :
-                if Common.Skip_injection % 5 != 0:
+                if Common.Skip_injection % 5 != 0 and (SimConnect.MSFS_User_Aircraft.iloc[-1]["Dis_Src"]) < 80:
                   Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
               else:
                 print("Arrival injection Completed at destination airport")  
