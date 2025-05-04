@@ -495,7 +495,7 @@ class Common:
            
             Arrival.Get_Arrival(DES_AIRPORT_IACO,100)
             Arrival.inject_Traffic_Arrival(DES_ACTIVE_RUNWAY)
-
+            
             Departure.Get_Departure(DES_AIRPORT_IACO,100)
             Departure.Inject_Parked_Traffic()
             Departure.Assign_Flt_plan(DES_ACTIVE_RUNWAY)
@@ -1588,8 +1588,8 @@ class Departure:
       qry_str = '''SELECT "_rowid_", * FROM "main"."approach" WHERE "airport_ident" LIKE '%'''+src+'''%' ESCAPE '\\' AND "type" LIKE '%GPS%' ESCAPE '\\' AND "suffix" LIKE '%D%' ESCAPE '\\' AND "runway_name" LIKE '%'''+RW+'''%' ESCAPE '\\'LIMIT 0, 49999;'''
       SID_df = pd.read_sql(sql=qry_str, con=conn.connection)
 
-  if ACTIVE_RUNWAY_TAKEOFF != "":
-    RW = ACTIVE_RUNWAY_TAKEOFF
+    if ACTIVE_RUNWAY_TAKEOFF != "":
+      RW = ACTIVE_RUNWAY_TAKEOFF
     
     RW_num =  str(int((re.findall(r'\d+', RW))[0]))
     RW_des = re.findall(r'[A-Za-z]', RW)
