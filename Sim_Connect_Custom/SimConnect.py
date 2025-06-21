@@ -41,7 +41,8 @@ class SimConnect:
 	MSFS_AI_Departure_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Req_Id","Obj_Id","Local_depart_time"])
 	MSFS_User_Aircraft =  pd.DataFrame(columns=["Cur_Lat","Cur_Log","Altitude","Dis_Src", "Dis_Des","Req_Id","Obj_Id"])
 	MSFS_Cruise_Traffic = pd.DataFrame(columns=["Call","Type","Src","Des","Cur_Lat","Cur_Log","Altitude","Heading","Speed","Flt_plan","Req_Id","Obj_Id"])
-	
+	MSFS_AI_Traffic = pd.DataFrame(columns=["Call","Cur_Lat","Cur_Log","Altitude","Heading","Speed","Req_Id","Obj_Id"])
+
 	def IsHR(self, hr, value):
 		_hr = ctypes.HRESULT(hr)
 		return ctypes.c_ulong(_hr.value).value == value
@@ -67,15 +68,28 @@ class SimConnect:
 	def handle_Remove_Exception(self,dwRequestID):
 		pass
 	
+	def handle_addremove_event(self,pData):
+		event_id = pData.uEventID
+		#obj_type = SIMCONNECT_SIMOBJECT_TYPE(pData.eObjType).name
+		Obj_Id = pData.dwData
+		if event_id == 4:
+			if len(self.MSFS_AI_Traffic) == 0:
+				self.MSFS_AI_Traffic.loc[len(self.MSFS_AI_Traffic)] =["Call",0.0,0.0,0.0,0.0,0.0,999,Obj_Id]
+			else:
+				if not( Obj_Id in self.MSFS_AI_Traffic["Obj_Id"].values):
+					self.MSFS_AI_Traffic.loc[len(self.MSFS_AI_Traffic)] =["Call",0.0,0.0,0.0,0.0,0.0,999,Obj_Id]
+	
+	
 	def handle_addremove_simobject_event(self,pData):
+	
 		req_id = pData.dwRequestID
 		obj_id = pData.dwObjectID
-		        
+   
 		if req_id in self.MSFS_AI_Arrival_Traffic["Req_Id"].values:
 			if self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Req_Id"] == req_id, "Obj_Id"].values[0] == 0:
 				self.MSFS_AI_Arrival_Traffic.loc[self.MSFS_AI_Arrival_Traffic["Req_Id"] == req_id, "Obj_Id"] = obj_id
 				#print(self.MSFS_AI_Arrival_Traffic.iloc[-1]["Call"] + "  Added")
-		
+
 		if req_id in self.MSFS_AI_Departure_Traffic["Req_Id"].values:
 			if self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Req_Id"] == req_id, "Obj_Id"].values[0] == 0:
 				self.MSFS_AI_Departure_Traffic.loc[self.MSFS_AI_Departure_Traffic["Req_Id"] == req_id, "Obj_Id"] = obj_id
@@ -138,6 +152,27 @@ class SimConnect:
 			self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Obj_Id"] == obj_id, "Cur_Log"] = longitude
 			self.MSFS_Cruise_Traffic.loc[self.MSFS_Cruise_Traffic["Obj_Id"] == obj_id, "Altitude"] = altitude
 
+		if obj_id in self.MSFS_AI_Traffic["Obj_Id"].values:
+			addressof_dwData = ctypes.addressof(pObjData.dwData)
+			pointer = ctypes.cast(addressof_dwData, ctypes.POINTER(ctypes.c_double))
+			altitude = float(pointer[0])
+			Latitude = float(pointer[1])
+			longitude = float(pointer[2])
+			Airspeed = float(pointer[3])
+			Landing_light = float(pointer[4])
+			ON_Ground = float(pointer[5])
+			Heading = math.degrees(float(pointer[6]))
+			Gear = float(pointer[7])
+			pointer_char = ctypes.cast(addressof_dwData, ctypes.POINTER(ctypes.c_char))
+			Call_sign = (pointer_char[64:74].split(b'\x00')[0].decode('utf-8'))
+
+			self.MSFS_AI_Traffic.loc[self.MSFS_AI_Traffic["Obj_Id"] == obj_id, "Call"] = Call_sign		
+			self.MSFS_AI_Traffic.loc[self.MSFS_AI_Traffic["Obj_Id"] == obj_id, "Cur_Lat"] = Latitude
+			self.MSFS_AI_Traffic.loc[self.MSFS_AI_Traffic["Obj_Id"] == obj_id, "Cur_Log"] = longitude
+			self.MSFS_AI_Traffic.loc[self.MSFS_AI_Traffic["Obj_Id"] == obj_id, "Altitude"] = altitude
+			self.MSFS_AI_Traffic.loc[self.MSFS_AI_Traffic["Obj_Id"] == obj_id, "Heading"] = Heading
+			self.MSFS_AI_Traffic.loc[self.MSFS_AI_Traffic["Obj_Id"] == obj_id, "Speed"] = Airspeed
+	  
 		
 		if obj_id == 1:
 			addressof_dwData = ctypes.addressof(pObjData.dwData)
@@ -204,13 +239,23 @@ class SimConnect:
 			exc = cast(pData, POINTER(SIMCONNECT_RECV_EXCEPTION)).contents
 			self.handle_exception_event(exc)
 		
+		elif dwID == SIMCONNECT_RECV_ID.SIMCONNECT_RECV_ID_EVENT_OBJECT_ADDREMOVE:
+			pObjData = cast(
+				pData, POINTER(SIMCONNECT_RECV_EVENT_OBJECT_ADDREMOVE)
+			).contents
+			self.handle_addremove_event(pObjData)
+			
+		
+		
 		elif dwID == SIMCONNECT_RECV_ID.SIMCONNECT_RECV_ID_ASSIGNED_OBJECT_ID:
 			pObjData = cast(
 				pData, POINTER(SIMCONNECT_RECV_ASSIGNED_OBJECT_ID)
 			).contents
+          
 			objectId = pObjData.dwObjectID
-			os.environ["SIMCONNECT_OBJECT_ID"] = str(objectId)
 			self.handle_addremove_simobject_event(pObjData)
+			os.environ["SIMCONNECT_OBJECT_ID"] = str(objectId)
+			
 
 		elif (dwID == SIMCONNECT_RECV_ID.SIMCONNECT_RECV_ID_AIRPORT_LIST) or (
 			dwID == SIMCONNECT_RECV_ID.SIMCONNECT_RECV_ID_WAYPOINT_LIST) or (
@@ -243,7 +288,7 @@ class SimConnect:
 		self.running = False
 		self.paused = False
 		self.DEFINITION_POS = None
-		self.DEFINITION_WAYPOINT = None
+		self.DEFINITION_ATC_DATA = None
 		self.DEFINITION_AIRSPEED = None
 		self.my_dispatch_proc_rd = self.dll.DispatchProc(self.my_dispatch_proc)
 		
@@ -257,7 +302,7 @@ class SimConnect:
 			)
 			if self.IsHR(err, 0):
 				LOGGER.debug("Connected to Flight Simulator!")
-				print("Connected to Flight Simulator!")
+				#print("Connected to Flight Simulator!")
 				# Request an event when the simulation starts
 
 				# The user is in control of the aircraft
@@ -289,8 +334,8 @@ class SimConnect:
 				self.timerThread = threading.Thread(target=self._run)
 				self.timerThread.daemon = True
 				self.timerThread.start()
-				while self.ok is False:
-					pass
+				#while self.ok is False:
+				#	pass
 		except OSError:
 			LOGGER.debug("Did not find Flight Simulator running.")
 			raise ConnectionError("Did not find Flight Simulator running.")
@@ -422,6 +467,7 @@ class SimConnect:
 			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'SIM ON GROUND',b'bool',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
 			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'HEADING INDICATOR',b'radians',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
 			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'GEAR HANDLE POSITION',b'bool',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_FLOAT64,0,SIMCONNECT_UNUSED)
+			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_POS.value,b'ATC ID',b'',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_STRING8,0,SIMCONNECT_UNUSED)
 				
 		retval = self.dll.RequestDataOnSimObject(
 		    self.hSimConnect,
@@ -460,4 +506,24 @@ class SimConnect:
 			pObjData
 		)
 		return retval
+
+
+	def Get_ATC_Data(self, req_id, object_id):
 		
+		if self.DEFINITION_ATC_DATA is None:
+			self.DEFINITION_ATC_DATA = self.new_def_id()
+			self.dll.AddToDataDefinition(self.hSimConnect,self.DEFINITION_ATC_DATA.value,b'ATC ID',b'',SIMCONNECT_DATATYPE.SIMCONNECT_DATATYPE_STRING8,0,SIMCONNECT_UNUSED)
+				
+		retval = self.dll.RequestDataOnSimObject(
+		    self.hSimConnect,
+			req_id,
+			self.DEFINITION_ATC_DATA.value,
+			object_id,
+			SIMCONNECT_PERIOD.SIMCONNECT_PERIOD_ONCE,
+			0,
+			0,
+			0,
+			0
+		)
+		return retval
+	
