@@ -1,0 +1,3 @@
+[submodule "FlightPlannerCli"]
+	path = FlightPlannerCli
+	url = https://github.com/NerdAtWork24X7/FlightPlannerCli.git
