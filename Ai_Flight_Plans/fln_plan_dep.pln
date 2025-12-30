@@ -1,0 +1,119 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SimBase.Document Type="AceXML" version="1,0">
+  <Descr>AceXML Document</Descr>
+  <FlightPlan.FlightPlan>
+    <Title>EDDF to LSZH</Title>
+    <FPType>IFR</FPType>
+    <RouteType>HighAlt</RouteType>
+    <CruisingAlt>33000</CruisingAlt>
+    <DepartureID>EDDF</DepartureID>
+    <DepartureLLA>N50° 1' 59.90",E8° 34' 13.67",+0000.00</DepartureLLA>
+    <DestinationID>LSZH</DestinationID>
+    <DestinationLLA>N47° 27' 30.22",E8° 32' 52.43",+0000.00</DestinationLLA>
+    <Descr>EDDF, LSZH created by littlenav.py</Descr>
+    <DepartureName>EDDF</DepartureName>
+    <DestinationName>LSZH</DestinationName>
+    <AppVersion>
+      <AppVersionMajor>1</AppVersionMajor>
+      <AppVersionBuild>0</AppVersionBuild>
+    </AppVersion>
+    <ATCWaypoint id="EDDF">
+      <ATCWaypointType>Airport</ATCWaypointType>
+      <WorldPosition>N50° 1' 59.90",E8° 34' 13.67",+0000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>EDDF</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="NOKDI">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N49° 51' 58.99",E8° 28' 45.02",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>NOKDI</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="FKS">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N49° 47' 27.51",E8° 32' 32.49",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>FKS</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="ODAVU">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N49° 43' 32.00",E8° 32' 2.00",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>ODAVU</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="ANEKI">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N49° 19' 2.18",E8° 28' 49.52",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>ANEKI</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="NEKLO">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N49° 17' 10.00",E8° 28' 35.02",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>NEKLO</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="BADLI">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N49° 3' 49.00",E8° 26' 50.98",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>BADLI</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="PABLA">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N48° 47' 18.91",E8° 21' 7.11",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>PABLA</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="HERBI">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N48° 29' 27.00",E8° 14' 36.98",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>HERBI</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="NATOR">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N48° 10' 12.01",E8° 19' 16.53",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>NATOR</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="TITIX">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N47° 51' 30.00",E8° 23' 48.00",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>TITIX</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="TRA">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N47° 41' 22.20",E8° 26' 13.08",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>TRA</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="RISLI">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N47° 27' 11.00",E8° 30' 26.97",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>RISLI</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="LSZH">
+      <ATCWaypointType>Airport</ATCWaypointType>
+      <WorldPosition>N47° 27' 30.22",E8° 32' 52.43",+0000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>LSZH</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+  </FlightPlan.FlightPlan>
+</SimBase.Document>

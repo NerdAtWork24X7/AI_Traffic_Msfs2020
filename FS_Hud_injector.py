@@ -25,6 +25,7 @@ from haversine import haversine, Unit
 import math
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from FlightPlannerCli.FltPlanGenerator import Create_plan_with_close_waypoint
 
 warnings.filterwarnings('ignore')
 
@@ -68,7 +69,7 @@ ADBS_host = ""
 simbrief_username = ""
 
 current_dir = os.getcwd()
-
+DB_PATH = current_dir + "\FlightPlannerCli\Database\little_navmap.sqlite"
 
 class Common:
    
@@ -254,7 +255,7 @@ class Common:
         icao = icao_iata["icao"]
         new_callsign = callsign.replace(IATA_call,icao)
         if livery_found == False and USE_AIG_LIVERY == True:  
-          tree = ET.parse('AIG.vmr')
+          tree = ET.parse('VMR_Files/AIG.vmr')
           root_AIG = tree.getroot()
           for model_match_rule in root_AIG.findall('ModelMatchRule'):
             # Check if the TypeCode matches
@@ -266,7 +267,7 @@ class Common:
                 break
         
         if livery_found == False and USE_FSTRAFFIC_LIVERY == True:  
-          tree = ET.parse('FSTraffic.vmr')
+          tree = ET.parse('VMR_Files/FSTraffic.vmr')
           root_FSTraffic = tree.getroot()
           for model_match_rule in root_FSTraffic.findall('ModelMatchRule'):
             # Check if the TypeCode matches
@@ -278,7 +279,7 @@ class Common:
                 break   
         
         if livery_found == False and USE_FSLTL_LIVERY == True: 
-          tree = ET.parse('FSLTL_Rules.vmr')
+          tree = ET.parse('VMR_Files/FSLTL_Rules.vmr')
           root_Fsltl = tree.getroot()
           # Iterate over all ModelMatchRule elements
           for model_match_rule in root_Fsltl.findall('ModelMatchRule'):
@@ -413,6 +414,7 @@ class Common:
       min = now.minute
       
       if prev_min != min:
+        Common.Read_Config_file()
                        
         if sm.quit == 1:
           #print("start sim connect")
@@ -505,28 +507,29 @@ class Common:
           Common.State_Machine = 2
           if Common.Shift_Src_Cruise == False:
             print("--------------Crusing------------------")  
-            Cruise.Create_Cruise_Traffic_database_Arrival_des(DES_AIRPORT_IACO,100)
-            Cruise.Inject_Cruise_Traffic_Arrival_des()
-            Cruise.Cruise_Arr_des_Index += 1
-            Cruise.Create_Cruise_Traffic_database_Arrival_src(SRC_AIRPORT_IACO,100)
-            Cruise.Inject_Cruise_Traffic_Arrival_src()
-            Cruise.Cruise_Arr_src_Index += 1
+            #Cruise.Create_Cruise_Traffic_database_Arrival_des(DES_AIRPORT_IACO,100)
+            #Cruise.Inject_Cruise_Traffic_Arrival_des()
+            #Cruise.Cruise_Arr_des_Index += 1
+            #Cruise.Create_Cruise_Traffic_database_Arrival_src(SRC_AIRPORT_IACO,100)
+            #Cruise.Inject_Cruise_Traffic_Arrival_src()
+            #Cruise.Cruise_Arr_src_Index += 1
           
           if (min % CRUISE_INJECTION_TIME == 0) or Common.Shift_Src_Cruise == False:
-            Cruise.Get_Cruise_Traffic_ADS_S(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],25)
-            if Common.Shift_Src_Cruise == False:
-              Cruise.Inject_Cruise_Traffic_ADB_S()
+            #Cruise.Get_Cruise_Traffic_ADS_S(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],100)
+            Cruise.Get_Cruise_Traffic_Volanta(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],100)
+            #if Common.Shift_Src_Cruise == False:
+            Cruise.Inject_Cruise_Traffic_Volanta()
             Common.Shift_Src_Cruise = True
 
-          if min % 2 == 0 :
-            if Cruise.Cruise_Arr_src_Index < MAX_CRUISE_AI_FLIGHTS: 
-              Cruise.Inject_Cruise_Traffic_Arrival_src()
-              Cruise.Cruise_Arr_src_Index += 1
-          
-          if min % 3 == 0 :
-            if Cruise.Cruise_Arr_des_Index  < MAX_CRUISE_AI_FLIGHTS:
-              Cruise.Inject_Cruise_Traffic_Arrival_des()
-              Cruise.Cruise_Arr_des_Index += 1
+          #if min % 2 == 0 :
+          #  if Cruise.Cruise_Arr_src_Index < MAX_CRUISE_AI_FLIGHTS: 
+          #    Cruise.Inject_Cruise_Traffic_Arrival_src()
+          #    Cruise.Cruise_Arr_src_Index += 1
+          #
+          #if min % 3 == 0 :
+          #  if Cruise.Cruise_Arr_des_Index  < MAX_CRUISE_AI_FLIGHTS:
+          #    Cruise.Inject_Cruise_Traffic_Arrival_des()
+          #    Cruise.Cruise_Arr_des_Index += 1
                       
         
 
@@ -550,15 +553,17 @@ class Common:
  
           
         time.sleep(10)
-        if min % 5 == 0:
+        if min % 5 == 0 and Common.State_Machine == 2:
+          time.sleep(40)
           sm.exit()
         time.sleep(20)
       
-      time.sleep(2)
+      time.sleep(30)
 
 
 class Cruise:
   Cruise_Traffic_ADB = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO","Lat","Lon","Altitude","Heading","Speed"])
+  Cruise_Traffic_Volanta = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO","Lat","Lon","Altitude","Heading","Speed"])
   FR24_Cruise_Arrival_des_Traffic = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO"])
   FR24_Cruise_Arrival_src_Traffic = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO"])
   Cruise_Arr_des_Index = 0
@@ -677,6 +682,80 @@ class Cruise:
     #time.sleep(5)
 
   
+  def Get_Cruise_Traffic_Volanta(lat,lon,dist):
+    url = "https://webassets.volanta.app/volanta-flight-positions.json"
+    response = requests.get(url)
+    traffic_data = response.json()
+    
+    print("------------Volanta Cruise Traffic---------------------")
+    if not traffic_data:
+        print("No data returned from Volanta JSON feed.")
+    else:
+      for elem in traffic_data.get("data", []):    
+        try:       
+          Call = elem.get("flightNumber")
+          flightNumber = elem.get("flightNumber")
+          Src_ICAO = elem.get("originIcao")
+          Des_ICAO = elem.get("destinationIcao")
+          atcRoute = elem.get("atcRoute")
+          Type = elem.get("aircraftIcao")
+          pos = elem.get("position", {})
+          Lat = pos.get("latitude")
+          Lon = pos.get("longitude")
+          Speed = pos.get("groundSpeed")
+          OnGround = pos.get("onGround", True)
+          Altitude = pos.get("altitude")
+          Heading = pos.get("headingTrue")
+          
+          User_coords = (float(lat),float(lon))
+          dist_to_user_km = haversine((Lat, Lon), User_coords, unit=Unit.KILOMETERS)
+
+          if OnGround == False and all(v is not None for v in (Lat, Lon, Altitude, Src_ICAO, Des_ICAO, Speed, Heading, Call, flightNumber,Type)) and dist_to_user_km < dist and \
+            int(Altitude) > CRUISE_ALTITUDE:
+            if Call in Cruise.Cruise_Traffic_Volanta['Call'].values:
+              continue
+            last_element = len(Cruise.Cruise_Traffic_Volanta)
+            Cruise.Cruise_Traffic_Volanta.loc[last_element] = [Call,Type,Src_ICAO,Des_ICAO,Lat,Lon,Altitude,Heading,Speed]
+        except:
+           print("Cruise volanta Flight not found")
+      print(Cruise.Cruise_Traffic_Volanta)
+  
+  def Inject_Cruise_Traffic_Volanta():
+    global current_dir
+    for flight in Cruise.Cruise_Traffic_Volanta.iterrows():
+      Call = flight[1]["Call"]
+      if Call in SimConnect.MSFS_Cruise_Traffic['Call'].values:
+        continue
+      last_element = len(SimConnect.MSFS_Cruise_Traffic)
+      Type = flight[1]["Type"]
+      Src  = flight[1]["Src_ICAO"]
+      Des = flight[1]["Des_ICAO"]
+      Cur_Lat = flight[1]["Lat"]
+      Cur_Log = flight[1]["Lon"]
+      Altitude = flight[1]["Altitude"]
+      Heading = flight[1]["Heading"]
+      Speed = flight[1]["Speed"]
+      Bank = 0
+      Pitch = 0
+      Flt_plan = 0
+      Gnd = 0
+      Req_Id = Common.Global_req_id
+      Obj_Id = 0
+      SimConnect.MSFS_Cruise_Traffic.loc[last_element] = [Call,Type,Src,Des,Cur_Lat,Cur_Log,Altitude,Heading,Speed,Flt_plan,Req_Id,Obj_Id]
+      try:
+        Livery_name , callsign = Common.Get_flight_match(Call,Type)
+        #flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat), float(Cur_Log) ,Speed,float(int(Altitude)),0)
+        flt_idx = Create_plan_with_close_waypoint(db_path=DB_PATH,dep=Src, dest=Des, output_file=current_dir + "/Ai_Flight_Plans/fln_plan_cruise.pln", include_sid=0, include_star=0,lat=float(Cur_Lat), lon=float(Cur_Log))
+        result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(re.findall(r'\d+', Call)[0]),current_dir + "/Ai_Flight_Plans/fln_plan_cruise",float(flt_idx["idx"]),False,Req_Id)
+        print("Crusing--Volanta--  " + callsign + " " + Type + " " + str(Livery_name))
+        Common.Global_req_id+=1
+        time.sleep(2)
+        if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
+          sm.AIAircraftAirspeed(SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0],float(500))
+      except:
+        print("Cannot Inject Cruise Flight")
+  
+
   def Get_Cruise_Traffic_ADS_S(lat,lon,dist):
     global ADBS_host,ADBS_key
     url = "https://adsbx-flight-sim-traffic.p.rapidapi.com/api/aircraft/json/lat/" + str(lat) + "/lon/" + str(lon) +"/dist/" + str(dist) +"/"
@@ -720,7 +799,8 @@ class Cruise:
           
     #if len(Cruise.Cruise_Traffic_ADB) > 0:
     #  print(Cruise.Cruise_Traffic_ADB)
-      
+
+
   def Inject_Cruise_Traffic_ADB_S():
     global current_dir
     for flight in Cruise.Cruise_Traffic_ADB.iterrows():
@@ -745,9 +825,10 @@ class Cruise:
       SimConnect.MSFS_Cruise_Traffic.loc[last_element] = [Call,Type,Src,Des,Cur_Lat,Cur_Log,Altitude,Heading,Speed,Flt_plan,Req_Id,Obj_Id]
       try:
         Livery_name , callsign = Common.Get_flight_match(Call,Type)
-        flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat),float(Cur_Log),float(Speed),float(Altitude))
+        #flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat),float(Cur_Log),float(Speed),float(Altitude))
+        flt_idx = Create_plan_with_close_waypoint(db_path=DB_PATH,dep=Src, dest=Des, output_file=current_dir + "/Ai_Flight_Plans/fln_plan_cruise.pln", include_sid=0, include_star=0,lat=float(Cur_Lat), lon=float(Cur_Log))
         print("Crusing----" + callsign + " " + Type + " " + str(Livery_name))
-        result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(re.findall(r'\d+', Call)[0]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
+        result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(re.findall(r'\d+', Call)[0]),current_dir + "/Ai_Flight_Plans/fln_plan_cruise",float(flt_idx["idx"]),False,Req_Id)
         Common.Global_req_id+=1
         time.sleep(2)
         if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
@@ -779,9 +860,10 @@ class Cruise:
           SimConnect.MSFS_Cruise_Traffic.loc[last_element] = [Call,Type,Src,Des,Cur_Lat,Cur_Log,Altitude,Heading,Speed,Flt_plan,Req_Id,Obj_Id]
           Livery_name , callsign = Common.Get_flight_match(Call,Type)
           Altitude_offset = random.choice([-1000,-2000,-3000,-4000,-5000,1000,2000,3000])
-          flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat), float(Cur_Log) ,Speed,float(int(Altitude) + int(Altitude_offset)))
+          #flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat), float(Cur_Log) ,Speed,float(int(Altitude) + int(Altitude_offset)))
+          flt_idx = Create_plan_with_close_waypoint(db_path=DB_PATH,dep=Src, dest=Des, output_file=current_dir + "/Ai_Flight_Plans/fln_plan_cruise.pln", include_sid=0, include_star=0,lat=float(Cur_Lat), lon=float(Cur_Log))
           print("Crusing----" + callsign + " " + Type + " " + str(Livery_name))
-          result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(Call[2:]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
+          result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(Call[2:]),current_dir + "/Ai_Flight_Plans/fln_plan_cruise",float(flt_idx["idx"]),False,Req_Id)
           Common.Global_req_id+=1
           time.sleep(2)
           if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
@@ -813,9 +895,10 @@ class Cruise:
           SimConnect.MSFS_Cruise_Traffic.loc[last_element] = [Call,Type,Src,Des,Cur_Lat,Cur_Log,Altitude,Heading,Speed,Flt_plan,Req_Id,Obj_Id]
           Livery_name, callsign = Common.Get_flight_match(Call,Type)
           Altitude_offset = random.choice([-1000,-2000,-3000,-4000,-5000,1000,2000,3000])
-          flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat), float(Cur_Log) ,Speed,float(int(Altitude) + int(Altitude_offset)))
+          #flt_plan = Cruise.Create_flt_Plan(Src,Des,float(Cur_Lat), float(Cur_Log) ,Speed,float(int(Altitude) + int(Altitude_offset)))
+          flt_idx = Create_plan_with_close_waypoint(db_path=DB_PATH,dep=Src, dest=Des, output_file=current_dir + "/Ai_Flight_Plans/fln_plan_cruise.pln", include_sid=0, include_star=0,lat=float(Cur_Lat), lon=float(Cur_Log))
           print("Crusing----" + callsign + " " + Type + " " + str(Livery_name))
-          result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(Call[2:]),current_dir + "/fln_plan_cruise",float(1),False,Req_Id)
+          result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(Call[2:]),current_dir + "/Ai_Flight_Plans/fln_plan_cruise",float(flt_idx["idx"]),False,Req_Id)
           Common.Global_req_id+=1
           time.sleep(2)
           if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
@@ -911,7 +994,7 @@ class Cruise:
     </FlightPlan.FlightPlan>
 </SimBase.Document>
 """
-    with open("fln_plan_cruise.pln", "w", encoding="utf-8-sig") as file:
+    with open("Ai_Flight_Plans/fln_plan_cruise.pln", "w", encoding="utf-8-sig") as file:
       file.write(fln_plan)
     return fln_plan
 
@@ -975,8 +1058,8 @@ class Arrival:
       #Arrival.Get_Arrival_ADB_S(des_air["laty"].iloc[-1],des_air["lonx"].iloc[-1],25)
       time.sleep(10)
  
-      driver.execute_script("window.open('https://www.airnavradar.com/data/airports/" + airport +"', '_blank');")
-      time.sleep(5)
+      #driver.execute_script("window.open('https://www.airnavradar.com/data/airports/" + airport +"', '_blank');")
+      #time.sleep(5)
     except:
       print("Check internet connection = " + url)
       return
@@ -1047,32 +1130,32 @@ class Arrival:
 
     # Get active Runway
     # Switch to the new tab (usually at index 1)
-    driver.switch_to.window(driver.window_handles[1])
+    #driver.switch_to.window(driver.window_handles[1])
     
-    time.sleep(2)
+    #time.sleep(2)
     #WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[6]/div[2]/div[2]/div[2]/div[2]/button[1]"))).click()
-    try:
-      consent_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".fc-cta-consent")))
-      consent_button.click()
-    except:
-        print("Consent button not found or already accepted.")
-    
-    
-    time.sleep(2)
-    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH,"//li[contains(@class, 'ListItemClickable')]//span[text()='Airport Info']/ancestor::li"))).click()
-    found_data = False
-    try:
-      Landing_RW = driver.find_element(By.XPATH, f"//div[@id='title' and contains(text(), 'in Use for Landing')]/following-sibling::div[@id='value']").text
-      Takeoff_RW = driver.find_element(By.XPATH, f"//div[@id='title' and contains(text(), 'in Use for Takeoff')]/following-sibling::div[@id='value']").text
-   
-      ACTIVE_RUNWAY_LAND = Landing_RW.split(" ")[0]
-      ACTIVE_RUNWAY_TAKEOFF = Takeoff_RW.split(" ")[0]
-  
-      print("ACTIVE_RUNWAY_LAND: " + ACTIVE_RUNWAY_LAND)
-      print("ACTIVE_RUNWAY_TAKEOFF: " + ACTIVE_RUNWAY_TAKEOFF)
-    
-    except:
-      print("Runway data not found")
+    #try:
+    #  consent_button = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".fc-cta-consent")))
+    #  consent_button.click()
+    #except:
+    #    print("Consent button not found or already accepted.")
+    #
+    #
+    #time.sleep(2)
+    #try:
+    #  WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH,"//li[contains(@class, 'ListItemClickable')]//span[text()='Airport Info']/ancestor::li"))).click()
+    #  found_data = False
+    #  Landing_RW = driver.find_element(By.XPATH, f"//div[@id='title' and contains(text(), 'in Use for Landing')]/following-sibling::div[@id='value']").text
+    #  Takeoff_RW = driver.find_element(By.XPATH, f"//div[@id='title' and contains(text(), 'in Use for Takeoff')]/following-sibling::div[@id='value']").text
+   #
+    #  ACTIVE_RUNWAY_LAND = Landing_RW.split(" ")[0]
+    #  ACTIVE_RUNWAY_TAKEOFF = Takeoff_RW.split(" ")[0]
+  #
+    #  print("ACTIVE_RUNWAY_LAND: " + ACTIVE_RUNWAY_LAND)
+    #  print("ACTIVE_RUNWAY_TAKEOFF: " + ACTIVE_RUNWAY_TAKEOFF)
+    #
+    #except:
+    #  print("Runway data not found")
 
 
 
@@ -1484,7 +1567,7 @@ class Arrival:
     </FlightPlan.FlightPlan>
 </SimBase.Document>
   """
-    with open("fln_plan_arr.pln", "w", encoding="utf-8-sig") as file:
+    with open("Ai_Flight_Plans/fln_plan_arr.pln", "w", encoding="utf-8-sig") as file:
       file.write(fln_plan)
     
     inject_index = 1
@@ -1550,7 +1633,7 @@ class Arrival:
           Livery_name , callsign = Common.Get_flight_match(Call,Type)
           inject_index = Arrival.Create_flight_plan_arr(Src,Des,RW)
           print("Arrival----" + callsign + " " + Type + " " + str(Livery_name))
-          result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(Call[2:]),current_dir + "/fln_plan_arr",float(inject_index),False,Req_Id)
+          result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(Call[2:]),current_dir + "/Ai_Flight_Plans/fln_plan_arr",float(inject_index),False,Req_Id)
           Common.Global_req_id+=1
           time.sleep(2)
           if SimConnect.MSFS_AI_Arrival_Traffic.loc[SimConnect.MSFS_AI_Arrival_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
@@ -1796,7 +1879,7 @@ class Departure:
 </SimBase.Document>
 """
 
-    with open("fln_plan_dep.pln", "w", encoding="utf-8-sig") as file:
+    with open("Ai_Flight_Plans/fln_plan_dep.pln", "w", encoding="utf-8-sig") as file:
       file.write(fln_plan)
     return fln_plan
 
@@ -1869,10 +1952,11 @@ class Departure:
           Type = SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Type"]
           Obj_Id =  SimConnect.MSFS_AI_Departure_Traffic.loc[Departure.Departure_Index,"Obj_Id"]
           Req_Id = Common.Global_req_id
-          flt_plan = Departure.Create_flight_plan_Dep(Src,Des,RW)
+          #flt_plan = Departure.Create_flight_plan_Dep(Src,Des,RW)
+          flt_idx = Create_plan_with_close_waypoint(db_path=DB_PATH,dep=Src, dest=Des, output_file=current_dir + "/Ai_Flight_Plans/fln_plan_dep.pln", include_sid=0, include_star=0)          
           Livery_name , callsign = Common.Get_flight_match(Call,Type)
           print("Depart----" + callsign + " " + Type + " " + str(Livery_name))
-          result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(Call[2:]),current_dir + "/fln_plan_dep",float(0),False,Req_Id)
+          result = sm.AICreateEnrouteATCAircraft(Livery_name,callsign,int(Call[2:]),current_dir + "/Ai_Flight_Plans/fln_plan_dep",float(0),False,Req_Id)
           Common.Global_req_id+=1
         except:
           print("Cannot create Departure flight plan")

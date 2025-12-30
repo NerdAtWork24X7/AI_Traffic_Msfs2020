@@ -1,0 +1,140 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<SimBase.Document Type="AceXML" version="1,0">
+  <Descr>AceXML Document</Descr>
+  <FlightPlan.FlightPlan>
+    <Title>EGLL to EHAM</Title>
+    <FPType>IFR</FPType>
+    <RouteType>HighAlt</RouteType>
+    <CruisingAlt>33000</CruisingAlt>
+    <DepartureID>EGLL</DepartureID>
+    <DepartureLLA>N51° 28' 38.98",W0° 27' 40.97",+0000.00</DepartureLLA>
+    <DestinationID>EHAM</DestinationID>
+    <DestinationLLA>N52° 18' 29.00",E4° 45' 50.98",+0000.00</DestinationLLA>
+    <Descr>EGLL, EHAM created by littlenav.py</Descr>
+    <DepartureName>EGLL</DepartureName>
+    <DestinationName>EHAM</DestinationName>
+    <AppVersion>
+      <AppVersionMajor>1</AppVersionMajor>
+      <AppVersionBuild>0</AppVersionBuild>
+    </AppVersion>
+    <ATCWaypoint id="EGLL">
+      <ATCWaypointType>Airport</ATCWaypointType>
+      <WorldPosition>N51° 28' 38.98",W0° 27' 40.97",+0000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>EGLL</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="UGBET">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 37' 1.00",W0° 7' 5.01",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>UGBET</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="LAM">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 38' 45.70",E0° 9' 6.13",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>LAM</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="EVNAS">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 40' 4.00",E0° 26' 38.02",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>EVNAS</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="WESUL">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 40' 15.29",E0° 29' 9.24",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>WESUL</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="BRASO">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 41' 6.57",E0° 41' 0.00",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>BRASO</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="MANGO">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 41' 33.99",E0° 47' 26.01",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>MANGO</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="LIVSU">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 41' 49.00",E0° 50' 57.99",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>LIVSU</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="SABER">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 42' 13.76",E0° 56' 58.23",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>SABER</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="IDESI">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 53' 51.74",E1° 53' 8.07",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>IDESI</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="RINIS">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 54' 29.65",E2° 19' 20.82",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>RINIS</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="LUSOR">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 55' 56.01",E2° 40' 1.01",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>LUSOR</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="NOGRO">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 57' 55.99",E3° 10' 19.02",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>NOGRO</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="IDRID">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N51° 59' 45.99",E3° 29' 45.99",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>IDRID</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="VALKO">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N52° 4' 16.83",E3° 50' 23.44",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>VALKO</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="EKROS">
+      <ATCWaypointType>Intersection</ATCWaypointType>
+      <WorldPosition>N52° 14' 14.20",E4° 37' 10.39",+33000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>EKROS</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+    <ATCWaypoint id="EHAM">
+      <ATCWaypointType>Airport</ATCWaypointType>
+      <WorldPosition>N52° 18' 29.00",E4° 45' 50.98",+0000.00</WorldPosition>
+      <ICAO>
+        <ICAOIdent>EHAM</ICAOIdent>
+      </ICAO>
+    </ATCWaypoint>
+  </FlightPlan.FlightPlan>
+</SimBase.Document>

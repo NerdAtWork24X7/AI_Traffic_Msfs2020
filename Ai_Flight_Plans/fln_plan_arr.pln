@@ -1,0 +1,174 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>    
+<SimBase.Document Type="AceXML" version="1,0">
+    <Descr>AceXML Document</Descr>
+    <FlightPlan.FlightPlan>
+        <Title>LTFM to EDDF</Title>
+        <FPType>IFR</FPType>
+        <CruisingAlt>7000</CruisingAlt>
+        <DepartureID>LTFM</DepartureID>
+        <DepartureLLA>N41° 16' 30.99",E28° 45' 7.03",+000325.00</DepartureLLA>
+        <DestinationID>EDDF</DestinationID>
+        <DestinationLLA>N50° 1' 59.9",E8° 34' 13.67",+000363.00</DestinationLLA>
+        <Descr>LTFM, EDDF</Descr>
+        <DepartureName>Istanbul</DepartureName>
+        <DestinationName>Frankfurt/Main</DestinationName>
+        <AppVersion>
+            <AppVersionMajor>10</AppVersionMajor>
+            <AppVersionBuild>60327</AppVersionBuild>
+        </AppVersion>
+        <ATCWaypoint id="LTFM">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N41° 16' 30.99",E28° 45' 7.03",+000325.00</WorldPosition>
+            <ICAO>
+                <ICAOIdent>LTFM</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="SPESA">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 51' 44.06",E9° 20' 53.98",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>SPESA</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="RIPKU">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N49° 59' 49.32",E9° 19' 27.08",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>RIPKU</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF406">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 21' 44.19",E9° 15' 29.61",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF406</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF407">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 23' 41.55",E9° 10' 32.1",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF407</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF408">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 18' 42.35",E8° 49' 9.83",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF408</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF411">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 12' 56.53",E8° 52' 30.88",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF411</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF412">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 14' 18.94",E8° 58' 22.44",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF412</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF413">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 15' 41.03",E9° 4' 14.39",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF413</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF414">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 17' 2.83",E9° 10' 6.67",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF414</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF415">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 18' 24.33",E9° 15' 59.33",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF415</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF416">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 19' 45.52",E9° 21' 52.32",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF416</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF416">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 19' 45.52",E9° 21' 52.32",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF416</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF526">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 14' 21.67",E9° 24' 53.21",+005000.00</WorldPosition>
+            <SpeedMaxFP>-1</SpeedMaxFP>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF526</ICAOIdent>
+                <ICAOAirport>EDDF</ICAOAirport>
+            </ICAO>
+        </ATCWaypoint>
+        <ATCWaypoint id="DF520">
+            <ATCWaypointType>Intersection</ATCWaypointType>
+            <WorldPosition>N50° 6' 35.95",E8° 51' 37.6",+004000.00</WorldPosition>
+            <ICAO>
+                <ICAORegion>ED</ICAORegion>
+                <ICAOIdent>DF520</ICAOIdent>
+            </ICAO>
+        </ATCWaypoint>      <ATCWaypoint id="EDDF">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N50° 1' 59.9",E8° 34' 13.67",+000363.00</WorldPosition>
+  <RunwayNumberFP>25</RunwayNumberFP>
+            <RunwayDesignatorFP>CENTER</RunwayDesignatorFP>
+            <ICAO>
+                <ICAOIdent>EDDF</ICAOIdent>        
+          </ICAO>
+        </ATCWaypoint>
+    </FlightPlan.FlightPlan>
+</SimBase.Document>
+  
