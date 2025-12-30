@@ -432,8 +432,10 @@ class Common:
           
           if (Fr24_Dep_len == 0 or Fr24_Arr_len == 0) and Common.Retry_SRC < 2:
             print("--------------At Departure Airport-------------------") 
-            Arrival.Get_Arrival(SRC_AIRPORT_IACO,100)
-            Departure.Get_Departure(SRC_AIRPORT_IACO,100)
+            if  Fr24_Arr_len == 0: 
+              Arrival.Get_Arrival(SRC_AIRPORT_IACO,100)
+            if Fr24_Dep_len == 0 :
+              Departure.Get_Departure(SRC_AIRPORT_IACO,100)
             Common.Retry_SRC += 1             #Retry only once if Flight Radar data is available
             
           else:
@@ -470,8 +472,10 @@ class Common:
             Departure.Departure_Index = 0
             SimConnect.MSFS_AI_Arrival_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Airspeed","Landing_light","ON_Ground","Landed","Heading","Gear","Req_Id","Obj_Id"])
             SimConnect.MSFS_AI_Departure_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Req_Id","Obj_Id","Local_depart_time"])
-            Arrival.Get_Arrival(DES_AIRPORT_IACO,100)  
-            Departure.Get_Departure(DES_AIRPORT_IACO,100)                  
+            if Common.Retry_DES == 0 or Fr24_Arr_len == 0: 
+              Arrival.Get_Arrival(DES_AIRPORT_IACO,100)  
+            if Common.Retry_DES == 0 or Fr24_Dep_len == 0:
+              Departure.Get_Departure(DES_AIRPORT_IACO,100)                  
             Common.Retry_DES += 1             #Retry only once if Flight Radar data is available
           
           else:
@@ -553,7 +557,7 @@ class Common:
  
           
         time.sleep(10)
-        if min % 5 == 0 and Common.State_Machine == 2:
+        if min % 5 == 0 :
           time.sleep(40)
           sm.exit()
         time.sleep(20)
