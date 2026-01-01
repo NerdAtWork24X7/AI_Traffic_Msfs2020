@@ -115,7 +115,7 @@ class Common:
     try:
       with open('config_user.json', 'r') as file:
         data = json.load(file)
-        AirLab_key = data["key"]
+        AirLab_key = data["AirLab_key"]
         simbrief_username = data["simbrief_username"]
     except:
       ("print config_user.json file not found")  
@@ -150,7 +150,7 @@ class Common:
   def Get_Flight_plan():
     global SRC_AIRPORT_IACO,DES_AIRPORT_IACO,SRC_ACTIVE_RUNWAY,DES_ACTIVE_RUNWAY
     global simbrief_username
-
+    
     if SRC_ACTIVE_RUNWAY == "" or DES_ACTIVE_RUNWAY == "" or SRC_AIRPORT_IACO == "" or DES_AIRPORT_IACO == "":
       response = requests.get("https://www.simbrief.com/api/xml.fetcher.php?username=" + simbrief_username)
   
@@ -517,8 +517,8 @@ class Common:
             #Cruise.Cruise_Arr_src_Index += 1
           
           if (min % CRUISE_INJECTION_TIME == 0) or Common.Shift_Src_Cruise == False:
-            Cruise.Get_Cruise_Traffic_AirLab(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],500)
-            Cruise.Get_Cruise_Traffic_Volanta(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],100)
+            Cruise.Get_Cruise_Traffic_AirLab(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],200)
+            Cruise.Get_Cruise_Traffic_Volanta(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],200)
             #if Common.Shift_Src_Cruise == False:
             Cruise.Inject_Cruise_Traffic_AirLab()
             Cruise.Inject_Cruise_Traffic_Volanta()
@@ -771,15 +771,15 @@ class Cruise:
           dist_to_user_km = haversine((float(flight["lat"]), float(flight["lng"])), User_coords, unit=Unit.KILOMETERS)
           if dist_to_user_km > dist:
             continue
-          if flight["flight_icao"] in Cruise.Cruise_Traffic_AirLab['Call'].values:
+          if flight["flight_iata"] in Cruise.Cruise_Traffic_AirLab['Call'].values:
             continue
           last_element = len(Cruise.Cruise_Traffic_AirLab)
           if int(flight["alt"]) > CRUISE_ALTITUDE:
-            Call = flight["flight_icao"]
+            Call = flight["flight_iata"]
             Type = flight["aircraft_icao"]
             Lat = flight["lat"]
             Lon = flight["lng"]
-            Altitude = flight["alt"]
+            Altitude = float(flight["alt"]) * 3.28084  #Convert m to feet
             Heading = flight["dir"]
             Speed = float(flight["speed"])
             Src_ICAO = flight["dep_icao"]
@@ -1819,9 +1819,6 @@ class Departure:
 sm = SimConnect(library_path=".\Sim_Connect_Custom\SimConnect.dll")
 Common.Run()
 
-
-
-Cruise.Get_Cruise_Traffic_AirLab(19.09155, 72.86597,500)
 #Arrival.Create_flight_plan_arr("EDDF","EHAM","36C","Airbus A320neo","IBERIA 2322")
 #Arrival.Create_flight_plan_arr("LEMD","SAEZ","11")
 #Departure.Create_flight_plan_Dep("NZAA","SCIP","05R")

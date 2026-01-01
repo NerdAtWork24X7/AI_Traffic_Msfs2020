@@ -115,7 +115,7 @@ class Common:
     try:
       with open('config_user.json', 'r') as file:
         data = json.load(file)
-        AirLab_key = data["key"]
+        AirLab_key = data["AirLab_key"]
         simbrief_username = data["simbrief_username"]
     except:
       ("print config_user.json file not found")  
@@ -542,8 +542,8 @@ class Common:
             #Cruise.Cruise_Arr_src_Index += 1
           
           if (min % CRUISE_INJECTION_TIME == 0) or Common.Shift_Src_Cruise == False:
-            Cruise.Get_Cruise_Traffic_AirLab(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],500)
-            Cruise.Get_Cruise_Traffic_Volanta(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],100)
+            Cruise.Get_Cruise_Traffic_AirLab(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],200)
+            Cruise.Get_Cruise_Traffic_Volanta(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],200)
             #if Common.Shift_Src_Cruise == False:
             Cruise.Inject_Cruise_Traffic_AirLab()
             Cruise.Inject_Cruise_Traffic_Volanta()
@@ -789,15 +789,15 @@ class Cruise:
           dist_to_user_km = haversine((float(flight["lat"]), float(flight["lng"])), User_coords, unit=Unit.KILOMETERS)
           if dist_to_user_km > dist:
             continue
-          if flight["flight_icao"] in Cruise.Cruise_Traffic_AirLab['Call'].values:
+          if flight["flight_iata"] in Cruise.Cruise_Traffic_AirLab['Call'].values:
             continue
           last_element = len(Cruise.Cruise_Traffic_AirLab)
           if int(flight["alt"]) > CRUISE_ALTITUDE:
-            Call = flight["flight_icao"]
+            Call = flight["flight_iata"]
             Type = flight["aircraft_icao"]
             Lat = flight["lat"]
             Lon = flight["lng"]
-            Altitude = flight["alt"]
+            Altitude = float(flight["alt"]) * 3.28084  #Convert m to feet
             Heading = flight["dir"]
             Speed = float(flight["speed"])
             Src_ICAO = flight["dep_icao"]
@@ -841,7 +841,7 @@ class Cruise:
         Common.Global_req_id+=1
         time.sleep(2)
         if SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0] > 1:
-          sm.AIAircraftAirspeed(SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0],float(Speed))
+          sm.AIAircraftAirspeed(SimConnect.MSFS_Cruise_Traffic.loc[SimConnect.MSFS_Cruise_Traffic["Call"] == Call, "Obj_Id"].values[0],float(500))
       except:
         print("Cannot Inject Cruise Flight")
   
