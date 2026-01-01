@@ -64,8 +64,7 @@ DEPART_REALTIME = True
 MIN_SEPARATION = 10 #KM
 
 
-ADBS_key = ""
-ADBS_host = ""
+AirLab_key = ""
 simbrief_username = ""
 
 current_dir = os.getcwd()
@@ -108,7 +107,7 @@ class Common:
   State_Machine = 0
   
   def Read_Config_file():
-    global ADBS_key,ADBS_host,simbrief_username
+    global AirLab_key,simbrief_username
     global USE_FSTRAFFIC_LIVERY,USE_AIG_LIVERY,MAX_ARRIVAL_AI_FLIGHTS,MAX_DEPARTURE_AI_FLIGHTS,MAX_CRUISE_AI_FLIGHTS
     global MAX_PARKED_AI_FLIGHTS,CRUISE_ALTITUDE,SRC_GROUND_RANGE,DES_GROUND_RANGE,SPWAN_DIST,USE_FSLTL_LIVERY,DEPART_REALTIME
     global SPWAN_ALTITUDE,GROUND_INJECTION_TIME_ARR,GROUND_INJECTION_TIME_DEP,CRUISE_INJECTION_TIME,MIN_SEPARATION
@@ -116,8 +115,7 @@ class Common:
     try:
       with open('config_user.json', 'r') as file:
         data = json.load(file)
-        ADBS_key = data["key"]
-        ADBS_host = data["host"]
+        AirLab_key = data["key"]
         simbrief_username = data["simbrief_username"]
     except:
       ("print config_user.json file not found")  
@@ -519,9 +517,10 @@ class Common:
             #Cruise.Cruise_Arr_src_Index += 1
           
           if (min % CRUISE_INJECTION_TIME == 0) or Common.Shift_Src_Cruise == False:
-            #Cruise.Get_Cruise_Traffic_ADS_S(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],100)
+            Cruise.Get_Cruise_Traffic_AirLab(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],500)
             Cruise.Get_Cruise_Traffic_Volanta(SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Lat"] ,SimConnect.MSFS_User_Aircraft.iloc[-1]["Cur_Log"],100)
             #if Common.Shift_Src_Cruise == False:
+            Cruise.Inject_Cruise_Traffic_AirLab()
             Cruise.Inject_Cruise_Traffic_Volanta()
             Common.Shift_Src_Cruise = True
 
@@ -535,8 +534,6 @@ class Common:
           #    Cruise.Inject_Cruise_Traffic_Arrival_des()
           #    Cruise.Cruise_Arr_des_Index += 1
                       
-        
-
         if Arrival.Arrival_Index >= len(Arrival.FR24_Arrival_Traffic):
           SimConnect.MSFS_AI_Arrival_Traffic =  pd.DataFrame(columns=['Estimate_time', "Call","Type","Src", "Des","Par_Lat","Par_Lon","Cur_Lat","Cur_Log","Altitude","Prv_Lat","Prv_Log","Stuck","Airspeed","Landing_light","ON_Ground","Landed","Heading","Gear","Req_Id","Obj_Id"])
           Arrival.Arrival_Index = 0
@@ -554,8 +551,7 @@ class Common:
         #  Common.Check_Traffic()
 
         prev_min = min
- 
-          
+   
         time.sleep(10)
         if min % 5 == 0 :
           time.sleep(40)
@@ -566,7 +562,7 @@ class Common:
 
 
 class Cruise:
-  Cruise_Traffic_ADB = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO","Lat","Lon","Altitude","Heading","Speed"])
+  Cruise_Traffic_AirLab = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO","Lat","Lon","Altitude","Heading","Speed"])
   Cruise_Traffic_Volanta = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO","Lat","Lon","Altitude","Heading","Speed"])
   FR24_Cruise_Arrival_des_Traffic = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO"])
   FR24_Cruise_Arrival_src_Traffic = pd.DataFrame(columns=["Call", "Type","Src_ICAO","Des_ICAO"])
@@ -587,7 +583,6 @@ class Cruise:
     try:
       url = "https://www.flightradar24.com/data/airports/" + airport_iata +"/arrivals"
       driver.get(url)
-      #Arrival.Get_Arrival_ADB_S(des_air["laty"].iloc[-1],des_air["lonx"].iloc[-1],25)
       time.sleep(10)
     except:
       print("Check internet connection = " + url)
@@ -643,7 +638,6 @@ class Cruise:
     try:
       url = "https://www.flightradar24.com/data/airports/" + airport_iata +"/arrivals"
       driver.get(url)
-      #Arrival.Get_Arrival_ADB_S(des_air["laty"].iloc[-1],des_air["lonx"].iloc[-1],25)
       time.sleep(10)
     except:
       print("Check internet connection = " + url)
@@ -760,54 +754,47 @@ class Cruise:
         print("Cannot Inject Cruise Flight")
   
 
-  def Get_Cruise_Traffic_ADS_S(lat,lon,dist):
-    global ADBS_host,ADBS_key
-    url = "https://adsbx-flight-sim-traffic.p.rapidapi.com/api/aircraft/json/lat/" + str(lat) + "/lon/" + str(lon) +"/dist/" + str(dist) +"/"
-    headers = {
-    	"x-rapidapi-key": ADBS_key,
-    	"x-rapidapi-host": ADBS_host
-    }
-    response = requests.get(url, headers=headers)
-    traffic_data = response.json()
+  def Get_Cruise_Traffic_AirLab(lat,lon,dist):
+    global AirLab_key
     
-
-    print("------------Cruise Traffic---------------------")
-    try:
-      for flight in traffic_data["ac"]:
-        if int(flight["gnd"]) == 0:
-          if flight["call"] in Cruise.Cruise_Traffic_ADB['Call'].values:
+    url = "https://airlabs.co/api/v9/flights?api_key=" + AirLab_key
+    response = requests.get(url)
+    traffic_data = response.json()
+    print("Found Airlab flight" + str(len(traffic_data["response"])))
+    for flight in traffic_data["response"]:
+      try:
+        if int(flight["alt"]) <= 100:
+          pass
+          #print("Skipping Ground Flight " + flight["flight_icao"])       
+        else:
+          User_coords = (float(lat),float(lon))
+          dist_to_user_km = haversine((float(flight["lat"]), float(flight["lng"])), User_coords, unit=Unit.KILOMETERS)
+          if dist_to_user_km > dist:
             continue
-          last_element = len(Cruise.Cruise_Traffic_ADB)
+          if flight["flight_icao"] in Cruise.Cruise_Traffic_AirLab['Call'].values:
+            continue
+          last_element = len(Cruise.Cruise_Traffic_AirLab)
           if int(flight["alt"]) > CRUISE_ALTITUDE:
-            Call = flight["call"]
-            Type = flight["type"]
+            Call = flight["flight_icao"]
+            Type = flight["aircraft_icao"]
             Lat = flight["lat"]
-            Lon = flight["lon"]
+            Lon = flight["lng"]
             Altitude = flight["alt"]
-            Heading = flight["trak"]
-            Speed = float(flight["spd"])
-             
-            qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+flight["from"].split(" ")[0]+"""%'"""
-            with Common.engine_airport_db.connect() as conn:
-              src_air = pd.read_sql(sql=qry_str, con=conn.connection)
-            Src_ICAO = src_air["icao"].iloc[-1]
-            
-            qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "iata" LIKE '%"""+flight["to"].split(" ")[0]+"""%'"""
-            with Common.engine_airport_db.connect() as conn:
-              des_air = pd.read_sql(sql=qry_str, con=conn.connection)
-            Des_ICAO = des_air["icao"].iloc[-1]
-                        
-            Cruise.Cruise_Traffic_ADB.loc[last_element] = [Call,Type,Src_ICAO,Des_ICAO,Lat,Lon,Altitude,Heading,Speed]
-    except:
-      print("Cruise ADB-S Flight not found")
+            Heading = flight["dir"]
+            Speed = float(flight["speed"])
+            Src_ICAO = flight["dep_icao"]
+            Des_ICAO =  flight["arr_icao"]
+            Cruise.Cruise_Traffic_AirLab.loc[last_element] = [Call,Type,Src_ICAO,Des_ICAO,Lat,Lon,Altitude,Heading,Speed]
+      except :
+        pass
           
-    #if len(Cruise.Cruise_Traffic_ADB) > 0:
-    #  print(Cruise.Cruise_Traffic_ADB)
+    if len(Cruise.Cruise_Traffic_AirLab) > 0:
+      print(Cruise.Cruise_Traffic_AirLab)
 
 
-  def Inject_Cruise_Traffic_ADB_S():
+  def Inject_Cruise_Traffic_AirLab():
     global current_dir
-    for flight in Cruise.Cruise_Traffic_ADB.iterrows():
+    for flight in Cruise.Cruise_Traffic_AirLab.iterrows():
       Call = flight[1]["Call"]
       if Call in SimConnect.MSFS_Cruise_Traffic['Call'].values:
         continue
@@ -912,135 +899,13 @@ class Cruise:
 
     #print(SimConnect.MSFS_Cruise_Traffic)
 
-  def Create_flt_Plan(Src,Des,Lat,Lon,Speed,crusing_alt):
-
-    qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+Src+"""%'"""
-    with Common.engine_airport_db.connect() as conn:
-      src_df = pd.read_sql(sql=qry_str, con=conn.connection) 
-    
-    src_name = src_df.iloc[-1]["name"]
-    src_Pos = Common.format_coordinates(float(src_df.iloc[-1]["laty"]),float(src_df.iloc[-1]["lonx"]),float(src_df.iloc[-1]["altitude"]))
-    
-    qry_str = f"""SELECT "_rowid_",* FROM "main"."airport" WHERE "ident" LIKE '%"""+Des+"""%'"""
-    with Common.engine_airport_db.connect() as conn:
-      des_df = pd.read_sql(sql=qry_str, con=conn.connection) 
-    des_name = des_df.iloc[-1]["name"] 
-    des_Pos =  Common.format_coordinates(float(des_df.iloc[-1]["laty"]),float(des_df.iloc[-1]["lonx"]),float(des_df.iloc[-1]["altitude"]))
-    
-    with Common.engine_waypoint_db.connect() as conn:
-      qry_str = '''SELECT"_rowid_",* FROM "main"."waypoint" WHERE "laty" > '''  + str(int(Lat)-3) + ''' AND "laty" < '''  + str(int(Lat) + 3) + ''' AND "lonx" > '''  + str(int(Lon)-3) + '''  AND "lonx" < '''  + str(int(Lon) + 3) + ''' '''
-      way_df = pd.read_sql(sql=qry_str, con=conn.connection)
-
-    R = 6371.0
-    distance = random.uniform(2, 50)
-    bearing = random.uniform(0, 2 * math.pi)
-
-    lat_rad = math.radians(Lat)
-    lon_rad = math.radians(Lon)
-
-    # Calculate new latitude and longitude
-    new_lat_rad = math.asin(math.sin(lat_rad) * math.cos(distance / R) + math.cos(lat_rad) * math.sin(distance / R) * math.cos(bearing))
-    new_lon_rad = lon_rad + math.atan2(math.sin(bearing) * math.sin(distance / R) * math.cos(lat_rad),
-                                       math.cos(distance / R) - math.sin(lat_rad) * math.sin(new_lat_rad))
-
-    # Convert radians back to degrees
-    new_lat = math.degrees(new_lat_rad)
-    new_lon = math.degrees(new_lon_rad)
-
-    waypoint_Pos = Common.format_coordinates(float(new_lat),float(new_lon),float(crusing_alt))
-    waypoint_id = "USERWP"
-    waypoint_reg = "USER"
-
-
-    
-    fln_plan = \
-"""<?xml version="1.0" encoding="UTF-8"?>
-<SimBase.Document Type="AceXML" version="1,0">
-    <Descr>AceXML Document</Descr>
-    <FlightPlan.FlightPlan>
-        <Title>"""+Src + """ to """+ Des +"""</Title>
-        <FPType>IFR</FPType>
-        <CruisingAlt>""" + str(crusing_alt) + """</CruisingAlt>
-        <DepartureID>""" + Src + """</DepartureID>
-        <DepartureLLA>""" + src_Pos +"""</DepartureLLA>
-        <DestinationID>""" + Des + """</DestinationID>
-        <DestinationLLA>"""+des_Pos+"""</DestinationLLA>
-        <Descr>""" + Src + """, """ + Des + """</Descr>
-        <DepartureName>""" + src_name + """</DepartureName>
-        <DestinationName>""" + des_name + """</DestinationName>
-        <AppVersion>
-            <AppVersionMajor>10</AppVersionMajor>
-            <AppVersionBuild>60327</AppVersionBuild>
-        </AppVersion>
-        <ATCWaypoint id=\""""+Src + """\">
-            <ATCWaypointType>Airport</ATCWaypointType>
-            <WorldPosition>"""+src_Pos+"""</WorldPosition>
-            <ICAO>
-                <ICAOIdent>"""+Src + """</ICAOIdent>
-            </ICAO>
-        </ATCWaypoint>
-        <ATCWaypoint id=\"""" + waypoint_id + """\">
-            <ATCWaypointType>Intersection</ATCWaypointType>
-            <WorldPosition>"""+waypoint_Pos+"""</WorldPosition>
-            <SpeedMaxFP>"""+str(Speed)+"""</SpeedMaxFP>
-            <ICAO>
-                <ICAORegion>""" + waypoint_reg + """</ICAORegion>
-                <ICAOIdent>""" + waypoint_id + """</ICAOIdent>
-            </ICAO>
-        </ATCWaypoint>
-        <ATCWaypoint id=\""""+ Des +"""\">
-            <ATCWaypointType>Airport</ATCWaypointType>
-            <WorldPosition>"""+des_Pos+"""</WorldPosition>
-            <ICAO>
-                <ICAOIdent>"""+ Des +"""</ICAOIdent>
-            </ICAO>
-        </ATCWaypoint>
-    </FlightPlan.FlightPlan>
-</SimBase.Document>
-"""
-    with open("Ai_Flight_Plans/fln_plan_cruise.pln", "w", encoding="utf-8-sig") as file:
-      file.write(fln_plan)
-    return fln_plan
-
 
 class Arrival:
 
   FR24_Arrival_Traffic = pd.DataFrame(columns=['Estimate_time', 'Scheduled_time', "Call","Src", "Type","Reg",'Ocio',"Src_ICAO","Des_ICAO","Local_arrival_time"])
-  ADBS_Arrival_Traffic = pd.DataFrame(columns=[ "Call","Lat","Lon","Altitude","Speed","Reg"])
  
   Arrival_Index = 0
 
-  def Get_Arrival_ADB_S(lat,lon,dist):
-    global ADBS_key,ADBS_host
-
-    print("------------Get Arrival ADB-S Traffic---------------------")
-
-    url = "https://adsbx-flight-sim-traffic.p.rapidapi.com/api/aircraft/json/lat/" + str(lat) + "/lon/" + str(lon) +"/dist/" + str(dist) +"/"
-    
-    headers = {
-    	"x-rapidapi-key": ADBS_key,
-    	"x-rapidapi-host": ADBS_host
-    }
-    response = requests.get(url, headers=headers)
-    traffic_data = response.json()
-
-    for flight in traffic_data["ac"]:
-      try:
-        if int(flight["gnd"]) == 0:
-          if flight["call"] in Arrival.ADBS_Arrival_Traffic['Call'].values:
-            continue
-          last_element = len(Arrival.ADBS_Arrival_Traffic)
-          Call = str(flight["call"])
-          Lat = str(flight["lat"])
-          Lon = str(flight["lon"])
-          Altitude = str(flight["alt"])
-          Speed = str(flight["spd"])                         
-          Reg = str(flight["reg"])                         
-          Arrival.ADBS_Arrival_Traffic.loc[last_element] = [Call,Lat,Lon,Altitude,Speed,Reg]
-      except:
-        print(str(flight) + "ADB_S Arrival Flight not found")
-    #print(Arrival.ADBS_Arrival_Traffic)
-      
   def Get_Arrival(airport,max_Arrival):
     global ACTIVE_RUNWAY_TAKEOFF,ACTIVE_RUNWAY_LAND
 
@@ -1059,7 +924,6 @@ class Arrival:
     try:
       url = "https://www.flightradar24.com/data/airports/" + airport_iata +"/arrivals"
       driver.get(url)
-      #Arrival.Get_Arrival_ADB_S(des_air["laty"].iloc[-1],des_air["lonx"].iloc[-1],25)
       time.sleep(10)
  
       #driver.execute_script("window.open('https://www.airnavradar.com/data/airports/" + airport +"', '_blank');")
@@ -1583,13 +1447,6 @@ class Arrival:
     return inject_index
 
 
-
-
-
-
-
-
-
   def inject_Traffic_Arrival(RW):
     global current_dir
     if len(Arrival.FR24_Arrival_Traffic) > 0:
@@ -1605,19 +1462,9 @@ class Arrival:
         Src  = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Src_ICAO"]
         Des = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Des_ICAO"]
         Reg = Arrival.FR24_Arrival_Traffic.loc[Arrival.Arrival_Index,"Reg"]
-        try:
-          Cur_Lat = Arrival.ADBS_Arrival_Traffic.loc[Arrival.ADBS_Arrival_Traffic["Reg"] == Reg, "Lat"].values[0]
-        except:
-          Cur_Lat = 0.0
-        try:  
-          Cur_Log = Arrival.ADBS_Arrival_Traffic.loc[Arrival.ADBS_Arrival_Traffic["Reg"] == Reg, "Lon"].values[0]
-        except:
-          Cur_Log = 0.0
-        
-        try:
-          altitude = Arrival.ADBS_Arrival_Traffic.loc[Arrival.ADBS_Arrival_Traffic["Reg"] == Reg, "Altitude"].values[0]
-        except:
-          altitude = 0
+        Cur_Lat = 0.0
+        Cur_Log = 0.0
+        altitude = 0
         
         Prv_Lat = 0.0
         Prv_Log = 0.0
@@ -1972,6 +1819,9 @@ class Departure:
 sm = SimConnect(library_path=".\Sim_Connect_Custom\SimConnect.dll")
 Common.Run()
 
+
+
+Cruise.Get_Cruise_Traffic_AirLab(19.09155, 72.86597,500)
 #Arrival.Create_flight_plan_arr("EDDF","EHAM","36C","Airbus A320neo","IBERIA 2322")
 #Arrival.Create_flight_plan_arr("LEMD","SAEZ","11")
 #Departure.Create_flight_plan_Dep("NZAA","SCIP","05R")
