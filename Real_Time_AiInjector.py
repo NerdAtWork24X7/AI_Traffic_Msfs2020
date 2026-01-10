@@ -68,7 +68,7 @@ AirLab_key = ""
 simbrief_username = ""
 
 current_dir = os.getcwd()
-DB_PATH = current_dir + "\FlightPlannerCli\Database\little_navmap.sqlite"
+DB_PATH = current_dir + f"\FlightPlannerCli\Database\little_navmap.sqlite"
 
 class Common:
    
@@ -312,7 +312,149 @@ class Common:
   
     return model_name , new_callsign
 
+  def Get_Airport_data(airport,Max_Traffic):
+    global ACTIVE_RUNWAY_TAKEOFF,ACTIVE_RUNWAY_LAND
+
+    ACTIVE_RUNWAY_LAND = ""
+    ACTIVE_RUNWAY_TAKEOFF = ""
+
+    driver = uc.Chrome(options=Common.chrome_options)
+    driver.set_window_size(945, 1012)
+    print("------------Get Airport Traffic---------------------")
+    
+    try:
+      url = "https://www.flightaware.com/live/airport/" + airport 
+      driver.get(url)
+      time.sleep(10)
+ 
+      #driver.execute_script("window.open('https://www.airnavradar.com/data/airports/" + airport +"', '_blank');")
+      #time.sleep(5)
+    except:
+      print("Check internet connection = " + url)
+      return
+
+    def Add_to_dataBase(flight_info,aircraft_type,type,date,arr_time,dep_time):
+      #print(flight_info)
+      Callsign = flight_info.split("/")[5]
+      ICAO_call = Callsign[:3]
+      with Common.engine_airline_db.connect() as conn:
+        qry_str = '''SELECT "_rowid_",* FROM "main"."callsigns" WHERE "icao" LIKE '%'''+ICAO_call+'''%' '''
+        src_df = pd.read_sql(sql=qry_str, con=conn.connection)
+      Call = src_df.iloc[-1]["iata"] + Callsign[3:]
+
+      Src =  flight_info.split("/")[9]
+      Type = aircraft_type
+      Ocio =  None
+      Reg =  Callsign
+
+      Src_ICAO = flight_info.split("/")[9]
+      Des_ICAO = flight_info.split("/")[10]
       
+      dep_time = dep_time.split()[0]
+      arr_time = arr_time.split()[0]
+
+      dep_dt = datetime.strptime(f"{date} {dep_time}","%Y%m%d %H:%M")
+      formatted_dep = dep_dt.strftime("%Y-%m-%d %H:%M")
+      arr_dt = datetime.strptime(f"{date} {arr_time}","%Y%m%d %H:%M")
+      formatted_arr = arr_dt.strftime("%Y-%m-%d %H:%M")
+
+      Local_arrival_time = formatted_arr
+      Local_depart_time =  formatted_dep
+      if type == "Arrival":
+        last_element = len(Arrival.FR24_Arrival_Traffic)
+        Estimate_time = Local_arrival_time
+        Scheduled_time = Local_arrival_time
+        if Call in Arrival.FR24_Arrival_Traffic['Call'].values:
+          return
+        Arrival.FR24_Arrival_Traffic.loc[last_element] = [Estimate_time, Scheduled_time, Call, Src,Type,Reg,Ocio,Src_ICAO,Des_ICAO,Local_arrival_time]
+      if type == "Departure":
+        last_element = len(Departure.FR24_Departure_Traffic)
+        Estimate_time = Local_depart_time
+        Scheduled_time = Local_depart_time
+        if Call in Departure.FR24_Departure_Traffic['Call'].values:
+          return
+        Departure.FR24_Departure_Traffic.loc[last_element] = [Estimate_time, Scheduled_time, Call, Src,Type,Reg,Ocio,Src_ICAO,Des_ICAO,Local_depart_time]
+
+    #print("------------Get Arrival Enroute Airport Traffic---------------------")
+    flight_elements = driver.find_elements(By.XPATH, "//*[@id='enroute-board']//table[contains(@class,'airportBoard')]//tbody/tr")
+    for flight in flight_elements: 
+      try:
+        flight_link = flight.find_element(By.XPATH, ".//td[contains(@class,'flight-ident')]//a")
+        flight_info = flight_link.get_attribute("href")
+        if flight_info.__contains__("history"):
+          aircraft_type = flight.find_element(By.XPATH, ".//td[2]//a").text.strip()
+          Arr_Date = flight_info.split("/")[7]
+          tds = flight.find_elements(By.XPATH, ".//td")
+          if len(tds) > 5:
+            Depart_time = flight.find_element(By.XPATH, ".//td[4]").text.replace("\n", " ").strip()
+            Arrive_time = flight.find_element(By.XPATH, ".//td[6]").text.replace("\n", " ").strip()
+            Add_to_dataBase(flight_info,aircraft_type,"Arrival",Arr_Date,Arrive_time,Depart_time)
+      except:
+        print(flight_info + "Not Found")
+
+    #print("------------Get Arrival Scheduled Airport Traffic---------------------")
+    flight_elements = driver.find_elements(By.XPATH, "//*[@id='arrivals-board']//table[contains(@class,'airportBoard')]//tbody/tr")
+    for flight in flight_elements: 
+      try:
+        flight_link = flight.find_element(By.XPATH, ".//td[contains(@class,'flight-ident')]//a")
+        flight_info = flight_link.get_attribute("href")
+        if flight_info.__contains__("history"):  
+          aircraft_type = flight.find_element(By.XPATH, ".//td[2]//a").text.strip()
+          Arr_Date = flight_info.split("/")[7]
+          tds = flight.find_elements(By.XPATH, ".//td")
+          if len(tds) > 5:
+            Depart_time = flight.find_element(By.XPATH, ".//td[4]").text.replace("\n", " ").strip()
+            Arrive_time = flight.find_element(By.XPATH, ".//td[6]").text.replace("\n", " ").strip()
+            Add_to_dataBase(flight_info,aircraft_type,"Arrival",Arr_Date,Arrive_time,Depart_time)
+      except:
+        print(flight_info + "Not Found")
+#
+    #print("------------Get departure Enroute Airport Traffic---------------------")
+    flight_elements = driver.find_elements(By.XPATH, "//*[@id='departures-board']//table[contains(@class,'airportBoard')]//tbody/tr")
+    for flight in flight_elements: 
+      try:
+        flight_link = flight.find_element(By.XPATH, ".//td[contains(@class,'flight-ident')]//a")
+        flight_info = flight_link.get_attribute("href")
+        if flight_info.__contains__("history"):  
+          aircraft_type = flight.find_element(By.XPATH, ".//td[2]//a").text.strip()
+          Dep_Date = flight_info.split("/")[7]
+          tds = flight.find_elements(By.XPATH, ".//td")
+          if len(tds) > 5:
+            Depart_time = flight.find_element(By.XPATH, ".//td[4]").text.replace("\n", " ").strip()
+            Arrive_time = flight.find_element(By.XPATH, ".//td[6]").text.replace("\n", " ").strip()
+            Add_to_dataBase(flight_info,aircraft_type,"Departure",Dep_Date,Arrive_time,Depart_time)
+      except:
+        print(flight_info + "Not Found")
+#
+    #print("------------Get departure Scheduled Airport Traffic---------------------")
+    flight_elements = driver.find_elements(By.XPATH, "//*[@id='scheduled-board']//table[contains(@class,'airportBoard')]//tbody/tr")
+    for flight in flight_elements: 
+      try:
+        flight_link = flight.find_element(By.XPATH, ".//td[contains(@class,'flight-ident')]//a")
+        flight_info = flight_link.get_attribute("href")
+        if flight_info.__contains__("history"):  
+          aircraft_type = flight.find_element(By.XPATH, ".//td[2]//a").text.strip()
+          Dep_Date = flight_info.split("/")[7]
+          tds = flight.find_elements(By.XPATH, ".//td")
+          if len(tds) > 5:
+            Depart_time = flight.find_element(By.XPATH, ".//td[4]").text.replace("\n", " ").strip()
+            Arrive_time = flight.find_element(By.XPATH, ".//td[6]").text.replace("\n", " ").strip()
+            Add_to_dataBase(flight_info,aircraft_type,"Departure",Dep_Date,Arrive_time,Depart_time)
+      except:
+        print(flight_info + "Not Found")
+
+
+    print("------------Arrival at Airport Traffic---------------------")
+    print(Arrival.FR24_Arrival_Traffic)
+
+    print("------------Get departure Scheduled Airport Traffic---------------------")
+    print(Departure.FR24_Departure_Traffic)
+  
+    driver.quit()
+    #time.sleep(5)
+
+
+
   def Get_User_Aircraft():
     
     sm.AIAircraft_GetPosition(2,1)
@@ -451,12 +593,13 @@ class Common:
           
           if (Fr24_Dep_len == 0 or Fr24_Arr_len == 0) and Common.Retry_SRC < 2:
             print("--------------At Departure Airport-------------------") 
+            Common.Get_Airport_data(SRC_AIRPORT_IACO,100)
             if Fr24_Arr_len == 0:
-              Arrival.Get_Arrival(SRC_AIRPORT_IACO,100)
+            #  Arrival.Get_Arrival(SRC_AIRPORT_IACO,100)
               Arrival.inject_Traffic_Arrival(SRC_ACTIVE_RUNWAY)
             
             if Fr24_Dep_len == 0:
-              Departure.Get_Departure(SRC_AIRPORT_IACO,100)
+            #  Departure.Get_Departure(SRC_AIRPORT_IACO,100)
               Departure.Inject_Parked_Traffic()
               Departure.Assign_Flt_plan(SRC_ACTIVE_RUNWAY)
             
@@ -494,10 +637,11 @@ class Common:
             Departure.FR24_Departure_Traffic = pd.DataFrame(columns=['Estimate_time', 'Scheduled_time', "Call","des", "Type","Reg",'Ocio',"Src_ICAO","Des_ICAO","Local_depart_time"])
             Departure.Departure_Index = 0
             Common.Check_Arrival_Departure(DES_AIRPORT_IACO)
-            if Common.Retry_DES == 0 or Fr24_Arr_len == 0: 
-              Arrival.Get_Arrival(DES_AIRPORT_IACO,100)  
-            if Common.Retry_DES == 0 or Fr24_Dep_len == 0:
-              Departure.Get_Departure(DES_AIRPORT_IACO,100)                  
+			Common.Get_Airport_data(DES_AIRPORT_IACO,100)
+            #if Common.Retry_DES == 0 or Fr24_Arr_len == 0: 
+            #  Arrival.Get_Arrival(DES_AIRPORT_IACO,100)  
+            #if Common.Retry_DES == 0 or Fr24_Dep_len == 0:
+            #  Departure.Get_Departure(DES_AIRPORT_IACO,100)                  
             Common.Retry_DES += 1             #Retry only once if Flight Radar data is available
           
           else:
